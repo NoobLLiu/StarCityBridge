@@ -1,0 +1,15 @@
+# StarCityBridge 数据整合插件配置
+backend:
+  # 网站后端 WebSocket 地址（插件网关）
+  url: "ws://localhost:8080/api/ws/plugin"
+  # 插件令牌，须与网站后端 .env 中的 PLUGIN_TOKEN 一致
+  token: "change_me_plugin_token"
+  # 断线重连间隔（秒）
+  reconnect-delay-seconds: 5
+  # 心跳间隔（秒）
+  heartbeat-seconds: 20
+
+modules:
+  authme:
+    # 登录插件（AuthMe）对接开关
+    enabled: true

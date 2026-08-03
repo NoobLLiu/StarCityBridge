@@ -1,0 +1,22 @@
+name: StarCityBridge
+version: 0.1.0
+main: com.starcity.bridge.StarCityBridge
+api-version: '1.21'
+authors: [StarCity]
+description: 数据整合插件：统一与 MC WebPanel 网站后端通过 WebSocket 通信
+website: https://github.com/starcity/mc-webpanel
+softdepend: [AuthMe]
+
+commands:
+  site:
+    description: 网站账户相关命令（绑定状态 / 重置网站密码）
+    usage: /site <bind|resetpw <新密码>>
+    aliases: [web]
+
+permissions:
+  starcitybridge.site.bind:
+    description: 查看网站账户绑定状态
+    default: true
+  starcitybridge.site.resetpw:
+    description: 在游戏内重置网站密码
+    default: true
