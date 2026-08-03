@@ -10,7 +10,7 @@
     <packaging>jar</packaging>
 
     <name>StarCityBridge</name>
-    <description>数据整合插件：统一与 MC WebPanel 网站后端通过 WebSocket 通信</description>
+    <description>数据整合插件：统一与 StarCity 网站后端通过 WebSocket 通信</description>
 
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
@@ -43,6 +43,13 @@
             <version>5.7.0-FORK</version>
             <scope>system</scope>
             <systemPath>D:/AICode/JAVA-paper/AuthMeReloaded/target/AuthMe-5.7.0-FORK.jar</systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.github.exchange</groupId>
+            <artifactId>stockexchange</artifactId>
+            <version>1.0.0-gmzc</version>
+            <scope>system</scope>
+            <systemPath>D:/AICode/JAVA-paper/stockexchange-patched/build/StockExchange-1.0.0-gmzc.jar</systemPath>
         </dependency>
     </dependencies>
 

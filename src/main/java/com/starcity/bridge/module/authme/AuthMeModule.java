@@ -77,6 +77,8 @@ public class AuthMeModule implements BridgeModule, Listener {
         String email = payload.has("email") ? payload.get("email").getAsString() : "";
         String bound = api.getEmail(player);
         boolean valid = bound != null && bound.equalsIgnoreCase(email);
+        org.bukkit.OfflinePlayer offline = Bukkit.getOfflinePlayer(player);
+        out.addProperty("player_uuid", offline.hasPlayedBefore() ? offline.getUniqueId().toString() : "");
         out.addProperty("available", true);
         out.addProperty("valid", valid);
         out.addProperty("email", bound);

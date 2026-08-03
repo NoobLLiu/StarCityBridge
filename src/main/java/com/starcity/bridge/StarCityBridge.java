@@ -4,6 +4,8 @@ import com.starcity.bridge.command.BridgeCommand;
 import com.starcity.bridge.config.PluginConfig;
 import com.starcity.bridge.module.ModuleManager;
 import com.starcity.bridge.module.authme.AuthMeModule;
+import com.starcity.bridge.module.market.MarketModule;
+import com.google.gson.Gson;
 import com.starcity.bridge.ws.WsClient;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -16,6 +18,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class StarCityBridge extends JavaPlugin {
 
     private static StarCityBridge instance;
+    private static final Gson GSON = new Gson();
 
     private PluginConfig pluginConfig;
     private ModuleManager moduleManager;
@@ -33,6 +36,10 @@ public final class StarCityBridge extends JavaPlugin {
         return wsClient;
     }
 
+    public Gson gson() {
+        return GSON;
+    }
+
     public ModuleManager modules() {
         return moduleManager;
     }
@@ -45,6 +52,7 @@ public final class StarCityBridge extends JavaPlugin {
         pluginConfig = PluginConfig.from(getConfig());
 
         moduleManager = new ModuleManager(this);
+        moduleManager.register(new MarketModule(this));
         if (pluginConfig.authMeEnabled()) {
             moduleManager.register(new AuthMeModule(this));
         }
