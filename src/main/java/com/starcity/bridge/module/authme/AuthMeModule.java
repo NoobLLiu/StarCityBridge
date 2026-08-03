@@ -39,6 +39,7 @@ public class AuthMeModule implements BridgeModule, Listener {
         return switch (action) {
             case "check_email" -> checkEmail(payload);
             case "verify_binding" -> verifyBinding(payload);
+            case "login_check" -> loginCheck(payload);
             default -> null;
         };
     }
@@ -97,6 +98,33 @@ public class AuthMeModule implements BridgeModule, Listener {
         plugin.getLogger().info("邮箱绑定完成事件已推送: " + event.getPlayer().getName() + " -> " + event.getEmail());
     }
 
+
+    /**
+     * 网站登录校验：邮箱 + 服务器内登录密码。
+     * 返回 {available, valid, player, player_uuid, email, is_op}
+     */
+    private JsonObject loginCheck(JsonObject payload) {
+        JsonObject out = new JsonObject();
+        AuthMeApi api = api();
+        if (api == null) {
+            out.addProperty("available", false);
+            return out;
+        }
+        String email = payload.has("email") ? payload.get("email").getAsString() : "";
+        String password = payload.has("password") ? payload.get("password").getAsString() : "";
+        boolean valid = api.checkPasswordByEmail(email, password);
+        out.addProperty("available", true);
+        out.addProperty("valid", valid);
+        if (valid) {
+            String player = api.getPlayerNameByEmail(email);
+            out.addProperty("player", player);
+            out.addProperty("email", email);
+            org.bukkit.OfflinePlayer offline = player == null ? null : Bukkit.getOfflinePlayer(player);
+            out.addProperty("player_uuid", offline != null && offline.hasPlayedBefore() ? offline.getUniqueId().toString() : "");
+            out.addProperty("is_op", offline != null && offline.isOp());
+        }
+        return out;
+    }
     private AuthMeApi api() {
         if (Bukkit.getPluginManager().getPlugin("AuthMe") == null) {
             return null;
