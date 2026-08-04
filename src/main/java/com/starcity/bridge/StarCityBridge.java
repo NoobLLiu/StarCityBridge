@@ -6,7 +6,9 @@ import com.starcity.bridge.module.ModuleManager;
 import com.starcity.bridge.module.authme.AuthMeModule;
 import com.starcity.bridge.module.market.MarketModule;
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import com.starcity.bridge.ws.WsClient;
+import com.starcity.bridge.ws.WsServer;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -23,6 +25,7 @@ public final class StarCityBridge extends JavaPlugin {
     private PluginConfig pluginConfig;
     private ModuleManager moduleManager;
     private WsClient wsClient;
+    private WsServer wsServer;
 
     public static StarCityBridge getInstance() {
         return instance;
@@ -38,6 +41,23 @@ public final class StarCityBridge extends JavaPlugin {
 
     public Gson gson() {
         return GSON;
+    }
+
+    /** 向网站后端发送请求（兼容两种连接模式） */
+    public java.util.concurrent.CompletableFuture<JsonObject> request(String module, String action, JsonObject payload) {
+        if (wsServer != null) {
+            return wsServer.request(module, action, payload);
+        }
+        return wsClient.request(module, action, payload);
+    }
+
+    /** 向网站后端推送事件（兼容两种连接模式） */
+    public void sendEvent(String module, String action, JsonObject payload) {
+        if (wsServer != null) {
+            wsServer.sendEvent(module, action, payload);
+        } else {
+            wsClient.sendEvent(module, action, payload);
+        }
     }
 
     public ModuleManager modules() {
@@ -57,8 +77,13 @@ public final class StarCityBridge extends JavaPlugin {
             moduleManager.register(new AuthMeModule(this));
         }
 
-        wsClient = new WsClient(this, pluginConfig, moduleManager);
-        wsClient.connect();
+        if ("server".equalsIgnoreCase(pluginConfig.connectionMode())) {
+            wsServer = new WsServer(this, pluginConfig, moduleManager);
+            wsServer.start();
+        } else {
+            wsClient = new WsClient(this, pluginConfig, moduleManager);
+            wsClient.connect();
+        }
 
         BridgeCommand command = new BridgeCommand(this);
         PluginCommand site = getCommand("site");
@@ -74,6 +99,9 @@ public final class StarCityBridge extends JavaPlugin {
     public void onDisable() {
         if (wsClient != null) {
             wsClient.close();
+        }
+        if (wsServer != null) {
+            wsServer.stop();
         }
         if (moduleManager != null) {
             moduleManager.disableAll();

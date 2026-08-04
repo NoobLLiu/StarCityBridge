@@ -10,7 +10,11 @@ public record PluginConfig(
         String token,
         int reconnectDelaySeconds,
         int heartbeatSeconds,
-        boolean authMeEnabled) {
+        boolean authMeEnabled,
+        String connectionMode,
+        String serverHost,
+        int serverPort,
+        String serverPath) {
 
     public static PluginConfig from(FileConfiguration cfg) {
         return new PluginConfig(
@@ -18,6 +22,10 @@ public record PluginConfig(
                 cfg.getString("backend.token", "change_me_plugin_token"),
                 cfg.getInt("backend.reconnect-delay-seconds", 5),
                 cfg.getInt("backend.heartbeat-seconds", 20),
-                cfg.getBoolean("modules.authme.enabled", true));
+                cfg.getBoolean("modules.authme.enabled", true),
+                cfg.getString("connection.mode", "server"),
+                cfg.getString("server.host", "0.0.0.0"),
+                cfg.getInt("server.port", 8082),
+                cfg.getString("server.path", "/ws"));
     }
 }

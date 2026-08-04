@@ -56,7 +56,7 @@ public class BridgeCommand implements CommandExecutor, TabCompleter {
             try {
                 JsonObject payload = new JsonObject();
                 payload.addProperty("player", player.getName());
-                JsonObject data = plugin.wsClient().request("authme", "check_email", payload).get(10, TimeUnit.SECONDS);
+                JsonObject data = plugin.request("authme", "check_email", payload).get(10, TimeUnit.SECONDS);
                 boolean hasEmail = data.has("has_email") && data.get("has_email").getAsBoolean();
                 String email = data.has("email") && !data.get("email").isJsonNull() ? data.get("email").getAsString() : null;
                 String msg = hasEmail
@@ -84,7 +84,7 @@ public class BridgeCommand implements CommandExecutor, TabCompleter {
                 JsonObject payload = new JsonObject();
                 payload.addProperty("player", player.getName());
                 payload.addProperty("new_password", newPassword);
-                JsonObject data = plugin.wsClient().request("auth", "reset_site_password", payload).get(10, TimeUnit.SECONDS);
+                JsonObject data = plugin.request("auth", "reset_site_password", payload).get(10, TimeUnit.SECONDS);
                 boolean ok = data.has("ok") && data.get("ok").getAsBoolean();
                 String error = data.has("error") && !data.get("error").isJsonNull() ? data.get("error").getAsString() : "未知原因";
                 String msg = ok ? "§a网站密码已重置，请使用新密码登录网站。" : "§c网站密码重置失败：" + error;

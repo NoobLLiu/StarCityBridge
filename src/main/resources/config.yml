@@ -13,3 +13,13 @@ modules:
   authme:
     # 登录插件（AuthMe）对接开关
     enabled: true
+# 连接模式：server=插件监听端口等待网站后端连接（反向模式，推荐，后端不需要公网）
+#          client=插件主动连接后端（旧模式，后端需要公网）
+connection:
+  mode: server
+
+# 反向模式服务端配置
+server:
+  host: 0.0.0.0
+  port: 8082
+  path: /ws

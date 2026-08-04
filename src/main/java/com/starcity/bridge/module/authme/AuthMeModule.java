@@ -94,7 +94,7 @@ public class AuthMeModule implements BridgeModule, Listener {
         JsonObject payload = new JsonObject();
         payload.addProperty("player", event.getPlayer().getName());
         payload.addProperty("email", event.getEmail());
-        plugin.wsClient().sendEvent("authme", "email_confirmed", payload);
+        plugin.sendEvent("authme", "email_confirmed", payload);
         plugin.getLogger().info("邮箱绑定完成事件已推送: " + event.getPlayer().getName() + " -> " + event.getEmail());
     }
 
