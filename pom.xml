@@ -42,14 +42,14 @@
             <artifactId>authme</artifactId>
             <version>5.7.0-FORK</version>
             <scope>system</scope>
-            <systemPath>D:/AICode/JAVA-paper/AuthMeReloaded/target/AuthMe-5.7.0-FORK.jar</systemPath>
+            <systemPath>D:/java-server/StarCIty/plugins/AuthMe-5.7.0-FORK.jar</systemPath>
         </dependency>
         <dependency>
             <groupId>com.github.exchange</groupId>
             <artifactId>stockexchange</artifactId>
             <version>1.0.0-gmzc</version>
             <scope>system</scope>
-            <systemPath>D:/AICode/JAVA-paper/stockexchange-patched/build/StockExchange-1.0.0-gmzc.jar</systemPath>
+            <systemPath>D:/java-server/dev/local-plugins/stockexchange-patched/build/StockExchange-1.0.0-gmzc.jar</systemPath>
         </dependency>
     </dependencies>
 
