@@ -14,7 +14,8 @@ public record PluginConfig(
         String connectionMode,
         String serverHost,
         int serverPort,
-        String serverPath) {
+        String serverPath,
+        boolean quietMode) {
 
     public static PluginConfig from(FileConfiguration cfg) {
         return new PluginConfig(
@@ -26,6 +27,7 @@ public record PluginConfig(
                 cfg.getString("connection.mode", "server"),
                 cfg.getString("server.host", "0.0.0.0"),
                 cfg.getInt("server.port", 8082),
-                cfg.getString("server.path", "/ws"));
+                cfg.getString("server.path", "/ws"),
+                cfg.getBoolean("settings.quiet_mode", false));
     }
 }

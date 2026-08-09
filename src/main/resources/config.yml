@@ -23,3 +23,7 @@ server:
   host: 0.0.0.0
   port: 8082
   path: /ws
+
+# 静音模式：true 时 /site 命令不再返回消息（重启后仍生效），再次 /site mute 恢复
+settings:
+  quiet_mode: false

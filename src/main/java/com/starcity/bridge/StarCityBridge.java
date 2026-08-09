@@ -7,6 +7,8 @@ import com.starcity.bridge.module.authme.AuthMeModule;
 import com.starcity.bridge.module.market.MarketModule;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+
+import java.util.logging.Level;
 import com.starcity.bridge.ws.WsClient;
 import com.starcity.bridge.ws.WsServer;
 import org.bukkit.command.PluginCommand;
@@ -43,7 +45,21 @@ public final class StarCityBridge extends JavaPlugin {
         return GSON;
     }
 
-    /** 向网站后端发送请求（兼容两种连接模式） */
+
+    /** 是否处于静音模式（命令不返回消息，配置持久化，重启仍生效） */
+    public boolean isQuietMode() {
+        return pluginConfig.quietMode();
+    }
+
+    /** 切换静音模式并保存到 config.yml（同时切换日志级别） */
+    public synchronized boolean toggleQuietMode() {
+        boolean next = !pluginConfig.quietMode();
+        getConfig().set("settings.quiet_mode", next);
+        saveConfig();
+        pluginConfig = PluginConfig.from(getConfig());
+        getLogger().setLevel(next ? Level.OFF : Level.INFO);
+        return next;
+    }
     public java.util.concurrent.CompletableFuture<JsonObject> request(String module, String action, JsonObject payload) {
         if (wsServer != null) {
             return wsServer.request(module, action, payload);
@@ -72,6 +88,8 @@ public final class StarCityBridge extends JavaPlugin {
         pluginConfig = PluginConfig.from(getConfig());
 
         moduleManager = new ModuleManager(this);
+        // 静音模式：日志级别随配置（重启后仍生效）
+        getLogger().setLevel(pluginConfig.quietMode() ? Level.OFF : Level.INFO);
         moduleManager.register(new MarketModule(this));
         if (pluginConfig.authMeEnabled()) {
             moduleManager.register(new AuthMeModule(this));

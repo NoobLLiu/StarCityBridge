@@ -1,6 +1,7 @@
 package com.starcity.bridge.ws;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 /**
@@ -16,9 +17,9 @@ public class Message {
     private String type;
     private String module;
     private String action;
-    private JsonObject payload;
+    private JsonElement payload;
     private boolean ok;
-    private JsonObject data;
+    private JsonElement data;
     private String error;
 
     public static Message parse(String json) {
@@ -76,8 +77,12 @@ public class Message {
     public String getType() { return type; }
     public String getModule() { return module; }
     public String getAction() { return action; }
-    public JsonObject getPayload() { return payload; }
+    public JsonObject getPayload() {
+        return payload == null || payload.isJsonNull() ? new JsonObject() : payload.getAsJsonObject();
+    }
     public boolean isOk() { return ok; }
-    public JsonObject getData() { return data; }
+    public JsonObject getData() {
+        return data == null || data.isJsonNull() ? null : data.getAsJsonObject();
+    }
     public String getError() { return error; }
 }

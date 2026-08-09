@@ -120,8 +120,29 @@ public class AuthMeModule implements BridgeModule, Listener {
             out.addProperty("player", player);
             out.addProperty("email", email);
             org.bukkit.OfflinePlayer offline = player == null ? null : Bukkit.getOfflinePlayer(player);
-            out.addProperty("player_uuid", offline != null && offline.hasPlayedBefore() ? offline.getUniqueId().toString() : "");
-            out.addProperty("is_op", offline != null && offline.isOp());
+            String uuid = "";
+            if (offline != null) {
+                if (offline.hasPlayedBefore()) {
+                    uuid = offline.getUniqueId().toString();
+                } else {
+                    uuid = java.util.UUID.nameUUIDFromBytes(("OfflinePlayer:" + player.toLowerCase(java.util.Locale.ROOT)).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString();
+                }
+            }
+            out.addProperty("player_uuid", uuid);
+            boolean isOp = false;
+            if (offline != null) {
+                isOp = offline.isOp();
+                // 兜底：遍历服务器完整 OP 列表，大小写不敏感匹配玩家名
+                if (!isOp) {
+                    for (org.bukkit.OfflinePlayer op : Bukkit.getServer().getOperators()) {
+                        if (op != null && op.getName() != null && op.getName().equalsIgnoreCase(player)) {
+                            isOp = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            out.addProperty("is_op", isOp);
         }
         return out;
     }
