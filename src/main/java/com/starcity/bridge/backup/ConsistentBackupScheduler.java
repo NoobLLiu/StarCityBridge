@@ -5,6 +5,7 @@ import com.google.gson.JsonParser;
 import com.starcity.bridge.StarCityBridge;
 import com.starcity.bridge.config.PluginConfig;
 import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.io.IOException;
@@ -34,6 +35,8 @@ public final class ConsistentBackupScheduler {
     private static final long TICKS_PER_MINUTE = 20L * 60L;
     private static final long CHECK_PERIOD_TICKS = 20L * 15L;
     private static final ZoneId BACKUP_ZONE = ZoneId.of("Asia/Shanghai");
+    private static final String DAILY_BACKUP_KICK_MESSAGE =
+            "服务器每日6:00进行停服备份，约30分钟后可进入";
 
     private final StarCityBridge plugin;
     private final PluginConfig config;
@@ -166,6 +169,7 @@ public final class ConsistentBackupScheduler {
         try {
             saveAll("consistent-backup");
             writeCleanShutdownHandoff(attempt);
+            logEvent("KICK_FOR_BACKUP players=" + kickPlayersForDailyBackup());
             logEvent("SAVE_OK requestedStop=" + Instant.now());
             plugin.getLogger().info("一致性备份保存完成，正在正常关闭服务器以制作冷镜像。");
             Bukkit.shutdown();
@@ -233,6 +237,19 @@ public final class ConsistentBackupScheduler {
         }
         logEvent("SAVE reason=" + reason + " players=" + Bukkit.getOnlinePlayers().size()
                 + " worlds=" + Bukkit.getWorlds().size() + " at=" + Instant.now());
+    }
+
+    private static int kickPlayersForDailyBackup() {
+        int kicked = 0;
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            player.kickPlayer(DAILY_BACKUP_KICK_MESSAGE);
+            kicked++;
+        }
+        return kicked;
+    }
+
+    static String dailyBackupKickMessage() {
+        return DAILY_BACKUP_KICK_MESSAGE;
     }
 
     private Instant readVerifiedSnapshotTimestamp() {

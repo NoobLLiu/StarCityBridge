@@ -106,4 +106,11 @@ final class ConsistentBackupSchedulerTest {
                         Instant.parse("2026-08-12T21:15:00Z"),
                         RETRY));
     }
+
+    @Test
+    void dailyBackupKickMessageStatesTheExpectedMaintenanceWindow() {
+        assertEquals(
+                "服务器每日6:00进行停服备份，约30分钟后可进入",
+                ConsistentBackupScheduler.dailyBackupKickMessage());
+    }
 }
