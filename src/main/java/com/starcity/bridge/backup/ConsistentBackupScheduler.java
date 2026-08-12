@@ -16,6 +16,7 @@ import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.logging.Level;
 
@@ -31,6 +32,7 @@ public final class ConsistentBackupScheduler {
 
     private static final long TICKS_PER_MINUTE = 20L * 60L;
     private static final long CHECK_PERIOD_TICKS = 20L * 15L;
+    private static final ZoneId BACKUP_ZONE = ZoneId.of("Asia/Shanghai");
 
     private final StarCityBridge plugin;
     private final PluginConfig config;
@@ -73,7 +75,8 @@ public final class ConsistentBackupScheduler {
 
         lastAttemptAt = readTimestamp(attemptPath);
         nextBackupAt = calculateNextBackupAt(Instant.now());
-        logEvent("START next=" + nextBackupAt + " intervalMinutes=" + config.backupIntervalMinutes());
+        logEvent("START next=" + nextBackupAt + " dailyTime=" + config.backupDailyTime()
+                + " zone=" + BACKUP_ZONE);
 
         long autosaveTicks = Math.multiplyExact((long) config.autosaveIntervalMinutes(), TICKS_PER_MINUTE);
         autosaveTask = Bukkit.getScheduler().runTaskTimer(
@@ -88,8 +91,8 @@ public final class ConsistentBackupScheduler {
                 CHECK_PERIOD_TICKS);
 
         plugin.getLogger().info(
-                "一致性备份已启用：每 " + config.backupIntervalMinutes()
-                        + " 分钟正常停服冷备；每 " + config.autosaveIntervalMinutes()
+                "一致性备份已启用：每天北京时间 " + config.backupDailyTime()
+                        + " 正常停服冷备；每 " + config.autosaveIntervalMinutes()
                         + " 分钟完整保存。下次备份约 " + formatLocal(nextBackupAt));
     }
 
@@ -106,9 +109,10 @@ public final class ConsistentBackupScheduler {
         Instant lastVerified = readVerifiedSnapshotTimestamp();
         return BackupDeadlineCalculator.nextBackupAt(
                 now,
+                config.backupDailyTime(),
+                BACKUP_ZONE,
                 lastVerified,
                 lastAttemptAt,
-                Duration.ofMinutes(config.backupIntervalMinutes()),
                 Duration.ofMinutes(config.backupRetryMinutes()));
     }
 
@@ -240,7 +244,7 @@ public final class ConsistentBackupScheduler {
 
     private static String formatLocal(Instant instant) {
         return DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss xxx")
-                .withZone(java.time.ZoneId.systemDefault())
+                .withZone(BACKUP_ZONE)
                 .format(instant);
     }
 

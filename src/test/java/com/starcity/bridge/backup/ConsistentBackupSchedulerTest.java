@@ -4,56 +4,106 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalTime;
+import java.time.ZoneId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 final class ConsistentBackupSchedulerTest {
 
-    private static final Duration INTERVAL = Duration.ofHours(6);
+    private static final ZoneId SHANGHAI = ZoneId.of("Asia/Shanghai");
+    private static final LocalTime DAILY_TIME = LocalTime.of(6, 0);
     private static final Duration RETRY = Duration.ofHours(1);
-    private static final Instant NOW = Instant.parse("2026-08-12T01:00:00Z");
 
     @Test
-    void schedulesFromLatestVerifiedSnapshot() {
+    void schedulesTodayAtSixWhenStartingAtFive() {
         assertEquals(
-                Instant.parse("2026-08-12T05:00:00Z"),
+                Instant.parse("2026-08-11T22:00:00Z"),
                 BackupDeadlineCalculator.nextBackupAt(
-                        NOW,
-                        Instant.parse("2026-08-11T23:00:00Z"),
+                        Instant.parse("2026-08-11T21:00:00Z"),
+                        DAILY_TIME,
+                        SHANGHAI,
                         null,
-                        INTERVAL,
-                        RETRY));
-    }
-
-    @Test
-    void runsImmediatelyWhenVerifiedSnapshotIsOverdue() {
-        assertEquals(
-                NOW,
-                BackupDeadlineCalculator.nextBackupAt(
-                        NOW,
-                        Instant.parse("2026-08-11T18:00:00Z"),
                         null,
-                        INTERVAL,
                         RETRY));
     }
 
     @Test
-    void failedAttemptDelaysRetryAndPreventsRestartLoop() {
+    void schedulesTomorrowAtSixWhenStartingAfterSix() {
         assertEquals(
-                Instant.parse("2026-08-12T01:30:00Z"),
+                Instant.parse("2026-08-12T22:00:00Z"),
                 BackupDeadlineCalculator.nextBackupAt(
-                        NOW,
-                        Instant.parse("2026-08-11T18:00:00Z"),
-                        Instant.parse("2026-08-12T00:30:00Z"),
-                        INTERVAL,
+                        Instant.parse("2026-08-11T22:00:01Z"),
+                        DAILY_TIME,
+                        SHANGHAI,
+                        null,
+                        null,
                         RETRY));
     }
 
     @Test
-    void startsAFullIntervalLaterWhenNoSnapshotExists() {
-        Instant now = Instant.parse("2026-08-12T01:00:00Z");
+    void runsAtExactSixBoundary() {
         assertEquals(
-                Instant.parse("2026-08-12T07:00:00Z"),
-                BackupDeadlineCalculator.nextBackupAt(now, null, null, INTERVAL, RETRY));
+                Instant.parse("2026-08-11T22:00:00Z"),
+                BackupDeadlineCalculator.nextBackupAt(
+                        Instant.parse("2026-08-11T22:00:00Z"),
+                        DAILY_TIME,
+                        SHANGHAI,
+                        null,
+                        null,
+                        RETRY));
+    }
+
+    @Test
+    void failedAttemptRetriesOneHourLater() {
+        assertEquals(
+                Instant.parse("2026-08-11T23:00:00Z"),
+                BackupDeadlineCalculator.nextBackupAt(
+                        Instant.parse("2026-08-11T22:05:00Z"),
+                        DAILY_TIME,
+                        SHANGHAI,
+                        Instant.parse("2026-08-11T20:00:00Z"),
+                        Instant.parse("2026-08-11T22:00:00Z"),
+                        RETRY));
+    }
+
+    @Test
+    void verifiedAttemptUsesNextDailyScheduleInsteadOfRetry() {
+        assertEquals(
+                Instant.parse("2026-08-12T22:00:00Z"),
+                BackupDeadlineCalculator.nextBackupAt(
+                        Instant.parse("2026-08-11T22:05:00Z"),
+                        DAILY_TIME,
+                        SHANGHAI,
+                        Instant.parse("2026-08-11T22:03:00Z"),
+                        Instant.parse("2026-08-11T22:00:00Z"),
+                        RETRY));
+    }
+
+    @Test
+    void overdueRetryRunsNowWithoutCreatingRestartLoop() {
+        Instant now = Instant.parse("2026-08-11T23:30:00Z");
+        assertEquals(
+                now,
+                BackupDeadlineCalculator.nextBackupAt(
+                        now,
+                        DAILY_TIME,
+                        SHANGHAI,
+                        Instant.parse("2026-08-11T20:00:00Z"),
+                        Instant.parse("2026-08-11T22:00:00Z"),
+                        RETRY));
+    }
+
+    @Test
+    void retryNeverRunsAfterTheNextDailyDeadline() {
+        assertEquals(
+                Instant.parse("2026-08-12T22:00:00Z"),
+                BackupDeadlineCalculator.nextBackupAt(
+                        Instant.parse("2026-08-12T21:30:00Z"),
+                        DAILY_TIME,
+                        SHANGHAI,
+                        Instant.parse("2026-08-11T20:00:00Z"),
+                        Instant.parse("2026-08-12T21:15:00Z"),
+                        RETRY));
     }
 }

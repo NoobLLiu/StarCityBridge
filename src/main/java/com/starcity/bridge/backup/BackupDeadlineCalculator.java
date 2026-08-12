@@ -2,6 +2,9 @@ package com.starcity.bridge.backup;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 
 final class BackupDeadlineCalculator {
 
@@ -10,13 +13,27 @@ final class BackupDeadlineCalculator {
 
     static Instant nextBackupAt(
             Instant now,
+            LocalTime dailyTime,
+            ZoneId zone,
             Instant lastVerified,
             Instant lastAttempt,
-            Duration interval,
             Duration retry) {
-        Instant dueFromVerified = lastVerified == null ? now.plus(interval) : lastVerified.plus(interval);
-        Instant dueFromAttempt = lastAttempt == null ? dueFromVerified : lastAttempt.plus(retry);
-        Instant due = dueFromVerified.isAfter(dueFromAttempt) ? dueFromVerified : dueFromAttempt;
-        return due.isAfter(now) ? due : now;
+        ZonedDateTime localNow = now.atZone(zone);
+        Instant scheduled = localNow.toLocalDate().atTime(dailyTime).atZone(zone).toInstant();
+        if (scheduled.isBefore(now)) {
+            scheduled = localNow.toLocalDate().plusDays(1).atTime(dailyTime).atZone(zone).toInstant();
+        }
+
+        boolean unverifiedAttempt = lastAttempt != null
+                && (lastVerified == null || lastVerified.isBefore(lastAttempt));
+        if (!unverifiedAttempt) {
+            return scheduled;
+        }
+
+        Instant retryAt = lastAttempt.plus(retry);
+        if (retryAt.isBefore(now)) {
+            retryAt = now;
+        }
+        return retryAt.isBefore(scheduled) ? retryAt : scheduled;
     }
 }
