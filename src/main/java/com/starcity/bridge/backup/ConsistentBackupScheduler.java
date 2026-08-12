@@ -18,6 +18,7 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.UUID;
 import java.util.logging.Level;
 
 /**
@@ -40,6 +41,7 @@ public final class ConsistentBackupScheduler {
     private final Path manifestPath;
     private final Path completeMarkerPath;
     private final Path attemptPath;
+    private final Path cleanShutdownHandoffPath;
     private final Path schedulerLogPath;
 
     private BukkitTask autosaveTask;
@@ -57,6 +59,7 @@ public final class ConsistentBackupScheduler {
         this.manifestPath = backupRoot.resolve("current").resolve("snapshot-manifest.json");
         this.completeMarkerPath = backupRoot.resolve("current").resolve("SNAPSHOT_COMPLETE.txt");
         this.attemptPath = backupRoot.resolve("last-backup-attempt.txt");
+        this.cleanShutdownHandoffPath = backupRoot.resolve("pending-clean-shutdown.json");
         this.schedulerLogPath = backupRoot.resolve("backup-scheduler.log");
     }
 
@@ -162,10 +165,11 @@ public final class ConsistentBackupScheduler {
         broadcast("§c[系统备份] 正在完整保存服务器，保存完成后将暂时断开并自动重新开放。");
         try {
             saveAll("consistent-backup");
+            writeCleanShutdownHandoff(attempt);
             logEvent("SAVE_OK requestedStop=" + Instant.now());
             plugin.getLogger().info("一致性备份保存完成，正在正常关闭服务器以制作冷镜像。");
             Bukkit.shutdown();
-        } catch (RuntimeException exception) {
+        } catch (Exception exception) {
             shutdownRequested = false;
             warnedFiveMinutes = false;
             warnedOneMinute = false;
@@ -177,6 +181,49 @@ public final class ConsistentBackupScheduler {
                     exception);
             broadcast("§c[系统备份] 保存失败，本次未关闭服务器；旧的有效备份不会被覆盖。");
         }
+    }
+
+    /**
+     * Hands the stopped-server snapshot script a short-lived proof that the
+     * current scheduled cycle completed {@code save-all flush} before asking
+     * Paper to stop. The launcher removes any leftover handoff before every
+     * new server process, so an unexpected exit can never reuse old proof.
+     */
+    private void writeCleanShutdownHandoff(Instant attempt) throws IOException {
+        JsonObject handoff = new JsonObject();
+        handoff.addProperty("formatVersion", 1);
+        handoff.addProperty("serverRoot", plugin.getDataFolder().getParentFile().getParentFile().getCanonicalPath());
+        handoff.addProperty("attemptedAtUtc", attempt.toString());
+        handoff.addProperty("saveCompletedAtUtc", Instant.now().toString());
+        handoff.addProperty("nonce", UUID.randomUUID().toString());
+
+        Files.createDirectories(backupRoot);
+        Path temporary = backupRoot.resolve(
+                cleanShutdownHandoffPath.getFileName() + "." + UUID.randomUUID() + ".tmp");
+        try {
+            Files.writeString(
+                    temporary,
+                    handoff.toString() + System.lineSeparator(),
+                    StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE_NEW,
+                    StandardOpenOption.WRITE);
+            try {
+                Files.move(
+                        temporary,
+                        cleanShutdownHandoffPath,
+                        java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            } catch (java.nio.file.AtomicMoveNotSupportedException ignored) {
+                Files.move(
+                        temporary,
+                        cleanShutdownHandoffPath,
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            Files.deleteIfExists(temporary);
+        }
+        Bukkit.getLogger().info("COLD_BACKUP_HANDOFF nonce=" + handoff.get("nonce").getAsString());
+        logEvent("SHUTDOWN_AUTHORIZED handoff=" + cleanShutdownHandoffPath + " at=" + Instant.now());
     }
 
     private void saveAll(String reason) {
