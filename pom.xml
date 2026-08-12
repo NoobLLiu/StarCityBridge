@@ -13,7 +13,7 @@
     <description>数据整合插件：统一与 StarCity 网站后端通过 WebSocket 通信</description>
 
     <properties>
-        <maven.compiler.release>21</maven.compiler.release>
+        <maven.compiler.release>25</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -51,6 +51,12 @@
             <scope>system</scope>
             <systemPath>D:/java-server/dev/local-plugins/stockexchange-patched/build/StockExchange-1.0.0-gmzc.jar</systemPath>
         </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.11.4</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -61,7 +67,7 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.13.0</version>
                 <configuration>
-                    <release>21</release>
+                    <release>25</release>
                 </configuration>
             </plugin>
         </plugins>

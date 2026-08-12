@@ -27,3 +27,13 @@ server:
 # 静音模式：true 时 /site 命令不再返回消息（重启后仍生效），再次 /site mute 恢复
 settings:
   quiet_mode: false
+
+# 一致性备份：
+# 在线时只执行 Bukkit/Paper 的完整保存；到备份周期后由服务器内部正常停服。
+# start.bat 会在所有插件和数据库关闭后制作、校验冷镜像，再自动重新开服。
+consistent-backup:
+  enabled: false
+  autosave-interval-minutes: 20
+  interval-minutes: 360
+  retry-minutes: 60
+  cold-snapshot-root: "E:\\StarCity-ColdRecovery"

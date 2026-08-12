@@ -1,6 +1,7 @@
 package com.starcity.bridge;
 
 import com.starcity.bridge.command.BridgeCommand;
+import com.starcity.bridge.backup.ConsistentBackupScheduler;
 import com.starcity.bridge.config.PluginConfig;
 import com.starcity.bridge.module.ModuleManager;
 import com.starcity.bridge.module.authme.AuthMeModule;
@@ -28,6 +29,7 @@ public final class StarCityBridge extends JavaPlugin {
     private ModuleManager moduleManager;
     private WsClient wsClient;
     private WsServer wsServer;
+    private ConsistentBackupScheduler backupScheduler;
 
     public static StarCityBridge getInstance() {
         return instance;
@@ -110,11 +112,17 @@ public final class StarCityBridge extends JavaPlugin {
             site.setTabCompleter(command);
         }
 
+        backupScheduler = new ConsistentBackupScheduler(this, pluginConfig);
+        backupScheduler.start();
+
         getLogger().info("StarCityBridge 已启用，后端: " + pluginConfig.backendUrl());
     }
 
     @Override
     public void onDisable() {
+        if (backupScheduler != null) {
+            backupScheduler.stop();
+        }
         if (wsClient != null) {
             wsClient.close();
         }

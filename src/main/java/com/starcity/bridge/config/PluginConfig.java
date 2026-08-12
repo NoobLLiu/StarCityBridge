@@ -15,7 +15,12 @@ public record PluginConfig(
         String serverHost,
         int serverPort,
         String serverPath,
-        boolean quietMode) {
+        boolean quietMode,
+        boolean consistentBackupEnabled,
+        int autosaveIntervalMinutes,
+        int backupIntervalMinutes,
+        int backupRetryMinutes,
+        String coldSnapshotRoot) {
 
     public static PluginConfig from(FileConfiguration cfg) {
         return new PluginConfig(
@@ -28,6 +33,11 @@ public record PluginConfig(
                 cfg.getString("server.host", "0.0.0.0"),
                 cfg.getInt("server.port", 8082),
                 cfg.getString("server.path", "/ws"),
-                cfg.getBoolean("settings.quiet_mode", false));
+                cfg.getBoolean("settings.quiet_mode", false),
+                cfg.getBoolean("consistent-backup.enabled", false),
+                Math.max(1, cfg.getInt("consistent-backup.autosave-interval-minutes", 20)),
+                Math.max(5, cfg.getInt("consistent-backup.interval-minutes", 360)),
+                Math.max(5, cfg.getInt("consistent-backup.retry-minutes", 60)),
+                cfg.getString("consistent-backup.cold-snapshot-root", "E:\\StarCity-ColdRecovery"));
     }
 }
