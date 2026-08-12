@@ -6,6 +6,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.io.File;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -112,5 +113,13 @@ final class ConsistentBackupSchedulerTest {
         assertEquals(
                 "服务器每日6:00进行停服备份，约30分钟后可进入",
                 ConsistentBackupScheduler.dailyBackupKickMessage());
+    }
+
+    @Test
+    void handoffUsesTheWorldContainerAsTheCanonicalServerRoot() throws Exception {
+        assertEquals(
+                new File("D:\\java-server\\StarCIty").getCanonicalPath(),
+                ConsistentBackupScheduler.canonicalServerRoot(
+                        new File("D:\\java-server\\StarCIty")));
     }
 }

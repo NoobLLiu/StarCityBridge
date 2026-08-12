@@ -196,7 +196,7 @@ public final class ConsistentBackupScheduler {
     private void writeCleanShutdownHandoff(Instant attempt) throws IOException {
         JsonObject handoff = new JsonObject();
         handoff.addProperty("formatVersion", 1);
-        handoff.addProperty("serverRoot", plugin.getDataFolder().getParentFile().getParentFile().getCanonicalPath());
+        handoff.addProperty("serverRoot", canonicalServerRoot(Bukkit.getWorldContainer()));
         handoff.addProperty("attemptedAtUtc", attempt.toString());
         handoff.addProperty("saveCompletedAtUtc", Instant.now().toString());
         handoff.addProperty("nonce", UUID.randomUUID().toString());
@@ -250,6 +250,10 @@ public final class ConsistentBackupScheduler {
 
     static String dailyBackupKickMessage() {
         return DAILY_BACKUP_KICK_MESSAGE;
+    }
+
+    static String canonicalServerRoot(java.io.File worldContainer) throws IOException {
+        return worldContainer.getCanonicalPath();
     }
 
     private Instant readVerifiedSnapshotTimestamp() {
