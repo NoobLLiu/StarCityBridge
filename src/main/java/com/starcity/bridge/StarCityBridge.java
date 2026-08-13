@@ -9,10 +9,16 @@ import com.starcity.bridge.module.market.MarketModule;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
+import java.nio.file.Path;
 import java.util.logging.Level;
 import com.starcity.bridge.ws.WsClient;
 import com.starcity.bridge.ws.WsServer;
+import org.bukkit.GameRule;
+import org.bukkit.World;
 import org.bukkit.command.PluginCommand;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.world.WorldLoadEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 /**
@@ -20,7 +26,7 @@ import org.bukkit.plugin.java.JavaPlugin;
  * <p>职责：启动 WS 客户端连接网站后端，注册各插件对接模块，
  * 统一在服务器与网站之间交换数据。</p>
  */
-public final class StarCityBridge extends JavaPlugin {
+public final class StarCityBridge extends JavaPlugin implements Listener {
 
     private static StarCityBridge instance;
     private static final Gson GSON = new Gson();
@@ -115,7 +121,32 @@ public final class StarCityBridge extends JavaPlugin {
         backupScheduler = new ConsistentBackupScheduler(this, pluginConfig);
         backupScheduler.start();
 
+        getServer().getPluginManager().registerEvents(this, this);
+        getServer().getWorlds().forEach(this::applyNonArenaWorldRules);
+
         getLogger().info("StarCityBridge 已启用，后端: " + pluginConfig.backendUrl());
+    }
+
+    @EventHandler
+    public void onWorldLoad(WorldLoadEvent event) {
+        applyNonArenaWorldRules(event.getWorld());
+    }
+
+    private void applyNonArenaWorldRules(World world) {
+        Path arenaRoot = getServer().getWorldContainer().toPath()
+            .resolve("arena_worlds")
+            .toAbsolutePath()
+            .normalize();
+        Path worldFolder = world.getWorldFolder().toPath()
+            .toAbsolutePath()
+            .normalize();
+        if (worldFolder.startsWith(arenaRoot)) {
+            return;
+        }
+        if (!Boolean.TRUE.equals(world.getGameRuleValue(GameRule.KEEP_INVENTORY))) {
+            world.setGameRule(GameRule.KEEP_INVENTORY, true);
+            getLogger().info("Enabled keepInventory for non-arena world: " + world.getName());
+        }
     }
 
     @Override
