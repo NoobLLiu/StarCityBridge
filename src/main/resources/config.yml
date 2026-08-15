@@ -36,4 +36,4 @@ consistent-backup:
   autosave-interval-minutes: 20
   daily-time: "06:00"
   retry-minutes: 60
-  cold-snapshot-root: "E:\\StarCity-ColdRecovery"
+  cold-snapshot-root: "E:\\StarCity-Backup\\StarCity-ColdRecovery"

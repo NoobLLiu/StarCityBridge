@@ -41,7 +41,7 @@ public record PluginConfig(
                 Math.max(1, cfg.getInt("consistent-backup.autosave-interval-minutes", 20)),
                 parseDailyTime(cfg.getString("consistent-backup.daily-time", "06:00")),
                 Math.max(5, cfg.getInt("consistent-backup.retry-minutes", 60)),
-                cfg.getString("consistent-backup.cold-snapshot-root", "E:\\StarCity-ColdRecovery"));
+                cfg.getString("consistent-backup.cold-snapshot-root", "E:\\StarCity-Backup\\StarCity-ColdRecovery"));
     }
 
     private static LocalTime parseDailyTime(String value) {
