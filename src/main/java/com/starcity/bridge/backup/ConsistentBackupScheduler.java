@@ -257,6 +257,10 @@ public final class ConsistentBackupScheduler {
     }
 
     private Instant readVerifiedSnapshotTimestamp() {
+        Instant discovered = VerifiedSnapshotLocator.readLatest(backupRoot);
+        if (discovered != null) {
+            return discovered;
+        }
         if (!Files.isRegularFile(completeMarkerPath) || !Files.isRegularFile(manifestPath)) {
             logEvent("NO_VERIFIED_SNAPSHOT current marker/manifest missing");
             return null;
