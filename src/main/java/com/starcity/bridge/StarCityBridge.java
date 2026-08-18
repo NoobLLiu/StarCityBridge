@@ -8,6 +8,7 @@ import com.starcity.bridge.module.authme.AuthMeModule;
 import com.starcity.bridge.module.market.MarketModule;
 import com.starcity.bridge.module.residence.ResidenceBridgeModule;
 import com.starcity.bridge.module.team.TeamModule;
+import com.starcity.bridge.module.ticket.TicketModule;
 import com.starcity.bridge.web.HttpApiServer;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -98,6 +99,7 @@ public final class StarCityBridge extends JavaPlugin {
         getLogger().setLevel(pluginConfig.quietMode() ? Level.OFF : Level.INFO);
         moduleManager.register(new MarketModule(this));
         moduleManager.register(new TeamModule(this));
+        moduleManager.register(new TicketModule(this));
         moduleManager.register(new ResidenceBridgeModule(this));
         if (pluginConfig.authMeEnabled()) {
             moduleManager.register(new AuthMeModule(this));

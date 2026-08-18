@@ -107,6 +107,10 @@ public final class HttpApiServer {
         portal( "POST", "/api/team/:tid/funds/deposit",       "team", "deposit_funds");
         portal( "POST", "/api/team/:tid/funds/withdraw",      "team", "withdraw_funds");
         portal( "POST", "/api/team/:tid/message",             "team", "post_message");
+        portal( "GET",  "/api/tickets",                      "ticket", "list_mine");
+        portal( "POST", "/api/tickets",                      "ticket", "create");
+        portal( "GET",  "/api/tickets/:id",                  "ticket", "detail");
+        portal( "POST", "/api/tickets/:id/reply",            "ticket", "reply");
 
         // 管理（admin 令牌 / is_op 玩家）
         admin("GET",  "/api/admin/team/all",                "team", "all");
@@ -117,6 +121,10 @@ public final class HttpApiServer {
         admin("POST", "/api/admin/market/:item_id/suspend",  "market", "admin_suspend");
         admin("POST", "/api/admin/market/tax",              "market", "admin_set_tax");
         admin("POST", "/api/admin/market/announcement",     "market", "admin_announcement");
+        admin("GET",  "/api/admin/tickets",                  "ticket", "admin_list");
+        admin("GET",  "/api/admin/tickets/:id",              "ticket", "admin_detail");
+        admin("POST", "/api/admin/tickets/:id/reply",        "ticket", "admin_reply");
+        admin("POST", "/api/admin/tickets/:id/status",       "ticket", "admin_status");
     }
 
     private void portal(String method, String path, String module, String action) {

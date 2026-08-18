@@ -79,6 +79,24 @@ Header `Authorization: Bearer <token>`，返回当前玩家信息。
 | POST | /api/team/:tid/funds/withdraw | `{amount, admin?:bool}` |
 | POST | /api/team/:tid/message | `{content}` |
 
+
+## 工单（module=ticket，数据保存在插件 data/tickets.json）
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | /api/tickets | 创建工单：`{subject, content}` |
+| GET | /api/tickets | 我的工单列表 |
+| GET | /api/tickets/:id | 工单详情（仅本人） |
+| POST | /api/tickets/:id/reply | 回复自己的工单：`{content}` |
+
+### 管理（X-Admin-Token）
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | /api/admin/tickets | 全部工单 |
+| GET | /api/admin/tickets/:id | 工单详情 |
+| POST | /api/admin/tickets/:id/reply | 管理员回复：`{content}` |
+| POST | /api/admin/tickets/:id/status | 改状态：`{status:"OPEN"|"CLOSED"}` |
 ## 管理（需要 X-Admin-Token）
 
 | 方法 | 路径 | 说明 |
@@ -92,4 +110,4 @@ Header `Authorization: Bearer <token>`，返回当前玩家信息。
 | POST | /api/admin/market/tax | `{percent}` |
 | POST | /api/admin/market/announcement | `{action, id?, content}` |
 
-> 管理后台类（RBAC/审计/文件/备份/工单/商店等）接口在后续迭代分批并入插件。
+> 管理后台接口中：工单功能已在本版本内置；RBAC/审计/文件管理/备份/商店等其余管理后台接口仍在后续迭代分批并入。
