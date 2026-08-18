@@ -57,6 +57,27 @@
             <version>5.11.4</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.artformgames.plugin</groupId>
+            <artifactId>residencelist-api</artifactId>
+            <version>1.4.15</version>
+            <scope>system</scope>
+            <systemPath>D:/AICode/JAVA-paper/ResidenceList/api/target/residencelist-api-1.4.15.jar</systemPath>
+        </dependency>
+        <dependency>
+            <groupId>com.bekvon.bukkit</groupId>
+            <artifactId>residence</artifactId>
+            <version>5.1.3.0</version>
+            <scope>system</scope>
+            <systemPath>D:/AICode/JAVA-paper/ResidenceList/.lib/Residence5.1.3.0.jar</systemPath>
+        </dependency>
+        <dependency>
+            <groupId>cc.carm.lib</groupId>
+            <artifactId>easyplugin-user</artifactId>
+            <version>1.5.14</version>
+            <scope>system</scope>
+            <systemPath>C:/Users/BrianLiu/.m2/repository/cc/carm/lib/easyplugin-user/1.5.14/easyplugin-user-1.5.14.jar</systemPath>
+        </dependency>
     </dependencies>
 
     <build>

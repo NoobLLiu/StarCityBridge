@@ -6,6 +6,7 @@ import com.starcity.bridge.config.PluginConfig;
 import com.starcity.bridge.module.ModuleManager;
 import com.starcity.bridge.module.authme.AuthMeModule;
 import com.starcity.bridge.module.market.MarketModule;
+import com.starcity.bridge.module.residence.ResidenceBridgeModule;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
@@ -93,6 +94,7 @@ public final class StarCityBridge extends JavaPlugin {
         // 静音模式：日志级别随配置（重启后仍生效）
         getLogger().setLevel(pluginConfig.quietMode() ? Level.OFF : Level.INFO);
         moduleManager.register(new MarketModule(this));
+        moduleManager.register(new ResidenceBridgeModule(this));
         if (pluginConfig.authMeEnabled()) {
             moduleManager.register(new AuthMeModule(this));
         }

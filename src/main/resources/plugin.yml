@@ -5,7 +5,7 @@ api-version: '1.21'
 authors: [StarCity]
 description: 数据整合插件：统一与 StarCity 网站后端通过 WebSocket 通信
 website: https://github.com/NoobLLiu/StarCityBridge
-softdepend: [AuthMe, StockExchange]
+softdepend: [AuthMe, StockExchange, ResidenceList, Residence]
 
 commands:
   site:
