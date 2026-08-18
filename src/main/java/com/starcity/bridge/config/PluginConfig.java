@@ -23,7 +23,14 @@ public record PluginConfig(
         int autosaveIntervalMinutes,
         LocalTime backupDailyTime,
         int backupRetryMinutes,
-        String coldSnapshotRoot) {
+        String coldSnapshotRoot,
+        boolean webApiEnabled,
+        String webApiHost,
+        int webApiPort,
+        String webApiTokenSecret,
+        int webApiTokenTtlSeconds,
+        String webApiAdminToken,
+        String webApiCorsOrigin) {
 
     public static PluginConfig from(FileConfiguration cfg) {
         return new PluginConfig(
@@ -41,7 +48,14 @@ public record PluginConfig(
                 Math.max(1, cfg.getInt("consistent-backup.autosave-interval-minutes", 20)),
                 parseDailyTime(cfg.getString("consistent-backup.daily-time", "06:00")),
                 Math.max(5, cfg.getInt("consistent-backup.retry-minutes", 60)),
-                cfg.getString("consistent-backup.cold-snapshot-root", "E:\\StarCity-Backup\\StarCity-ColdRecovery"));
+                cfg.getString("consistent-backup.cold-snapshot-root", "E:\\StarCity-Backup\\StarCity-ColdRecovery"),
+                cfg.getBoolean("web-api.enabled", true),
+                cfg.getString("web-api.host", "0.0.0.0"),
+                Math.max(1, cfg.getInt("web-api.port", 8083)),
+                cfg.getString("web-api.token-secret", "change_me_web_api_secret"),
+                Math.max(60, cfg.getInt("web-api.token-ttl-seconds", 3600)),
+                cfg.getString("web-api.admin-token", "change_me_admin_token"),
+                cfg.getString("web-api.cors-origin", "*"));
     }
 
     private static LocalTime parseDailyTime(String value) {

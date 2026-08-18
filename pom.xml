@@ -51,6 +51,14 @@
             <scope>system</scope>
             <systemPath>D:/java-server/dev/local-plugins/stockexchange-patched/build/StockExchange-1.0.0-gmzc.jar</systemPath>
         </dependency>
+
+        <dependency>
+            <groupId>cn.gmzc.mgteam</groupId>
+            <artifactId>mgteam</artifactId>
+            <version>1.0.0</version>
+            <scope>system</scope>
+            <systemPath>D:/java-server/dev/local-plugins/MGTeam-JE/build/MGTeam-1.0.0.jar</systemPath>
+        </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>

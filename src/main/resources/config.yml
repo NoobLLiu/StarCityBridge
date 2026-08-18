@@ -37,3 +37,20 @@ consistent-backup:
   daily-time: "06:00"
   retry-minutes: 60
   cold-snapshot-root: "E:\\StarCity-Backup\\StarCity-ColdRecovery"
+
+# 网页后端（由插件直接对外提供 HTTP REST API，替代旧 Go 后端转发）
+web-api:
+  # 是否启用插件内建的 HTTP REST 后端
+  enabled: true
+  # 监听地址与端口（前端直接访问）
+  host: 0.0.0.0
+  port: 8083
+  # 玩家令牌 HMAC 签名密钥（请修改为随机长字符串）
+  token-secret: "change_me_web_api_secret"
+  # 玩家令牌有效期（秒）
+  token-ttl-seconds: 3600
+  # 管理员接口令牌（前端放 X-Admin-Token 头，或 query 参数 admin_token）
+  admin-token: "change_me_admin_token"
+  # 允许的 CORS 源（* 表示任意，生产环境建议改成前端域名）
+  cors-origin: "*"
+

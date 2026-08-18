@@ -7,6 +7,8 @@ import com.starcity.bridge.module.ModuleManager;
 import com.starcity.bridge.module.authme.AuthMeModule;
 import com.starcity.bridge.module.market.MarketModule;
 import com.starcity.bridge.module.residence.ResidenceBridgeModule;
+import com.starcity.bridge.module.team.TeamModule;
+import com.starcity.bridge.web.HttpApiServer;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
@@ -30,6 +32,7 @@ public final class StarCityBridge extends JavaPlugin {
     private ModuleManager moduleManager;
     private WsClient wsClient;
     private WsServer wsServer;
+    private HttpApiServer httpServer;
     private ConsistentBackupScheduler backupScheduler;
 
     public static StarCityBridge getInstance() {
@@ -94,6 +97,7 @@ public final class StarCityBridge extends JavaPlugin {
         // 静音模式：日志级别随配置（重启后仍生效）
         getLogger().setLevel(pluginConfig.quietMode() ? Level.OFF : Level.INFO);
         moduleManager.register(new MarketModule(this));
+        moduleManager.register(new TeamModule(this));
         moduleManager.register(new ResidenceBridgeModule(this));
         if (pluginConfig.authMeEnabled()) {
             moduleManager.register(new AuthMeModule(this));
@@ -105,6 +109,15 @@ public final class StarCityBridge extends JavaPlugin {
         } else {
             wsClient = new WsClient(this, pluginConfig, moduleManager);
             wsClient.connect();
+        }
+
+        if (pluginConfig.webApiEnabled()) {
+            httpServer = new HttpApiServer(this, pluginConfig);
+            try {
+                httpServer.start();
+            } catch (Exception e) {
+                getLogger().warning("网页后端启动失败: " + e.getMessage());
+            }
         }
 
         BridgeCommand command = new BridgeCommand(this);
@@ -130,6 +143,9 @@ public final class StarCityBridge extends JavaPlugin {
         }
         if (wsServer != null) {
             wsServer.stop();
+        }
+        if (httpServer != null) {
+            httpServer.stop();
         }
         if (moduleManager != null) {
             moduleManager.disableAll();
