@@ -75,6 +75,7 @@ public final class HttpApiServer {
         portal( "GET",  "/api/market/me/orders",              "market", "my_orders");
         portal( "GET",  "/api/market/me/trades",              "market", "my_trades");
         portal( "GET",  "/api/market/me/warehouse",           "market", "my_warehouse");
+        portal( "GET",  "/api/market/me/balance",             "market", "my_balance");
         portal( "POST", "/api/market/order",                  "market", "place_order");
         portal( "POST", "/api/market/order/:order_id/cancel",  "market", "cancel");
         portal( "POST", "/api/market/trade",                  "market", "trade");

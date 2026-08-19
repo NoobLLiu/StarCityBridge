@@ -34,23 +34,37 @@ Header `Authorization: Bearer <token>`，返回当前玩家信息。
 
 ---
 
-## 市场（module=market）
+## 市场（module=market，网页资产走个人仓库通道）
+
+> 权限说明（与游戏内一致，校验在 StockExchange 导出层）：
+> - 商品列表/详情/盘口/市场信息对**所有登录玩家**公开；
+> - 「我的挂单/成交/仓库/余额」仅本人可见（后端按 token 的 `player_uuid` 取数）；
+> - 挂单/市价/兑换/仓库存取走仓库通道，**一般无需玩家在线**；仅「手持物品存入 / 提取到游戏背包」需在线；
+> - 管理动作（停牌/税率/公告/重载/重连）已加 `admin` 守卫，本迭代未暴露 HTTP 路由。
+> - 余额通过 Vault（经济核心，底层 XConomy）读取：`balance` 可能为 `null`（`economy_available=false`）。
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| GET | /api/market/items?buy_page=&query=&page=&page_size= | 商品分页列表 |
-| GET | /api/market/items/:item_id?buy_page=&page=&page_size= | 单品种详情 |
-| GET | /api/market/orderbook/:item_id | 盘口 |
-| GET | /api/market/info | 市场参数与公告 |
-| GET | /api/market/me/orders | 我的挂单 |
-| GET | /api/market/me/trades?page=&size= | 我的成交 |
-| GET | /api/market/me/warehouse | 我的仓库 |
+| GET | /api/market/items?buy_page=&query=&page=&page_size= | 商品分页列表（含 `total`/`total_pages`） |
+| GET | /api/market/items/:item_id?buy_page=&page=&page_size= | 单品种详情（挂单列表 + 供货计划） |
+| GET | /api/market/orderbook/:item_id | 盘口（`buys`/`sells` 聚合档位 + 原始挂单） |
+| GET | /api/market/info | 市场参数与公告（含 `tax_rate`、`notice`） |
+| GET | /api/market/me/orders | 我的挂单（**data 为数组**） |
+| GET | /api/market/me/trades?page=&size= | 我的成交（分页：`items`/`total`/`page`/`page_size`） |
+| GET | /api/market/me/warehouse | 我的仓库（`money`+`balance`+`items`） |
+| GET | /api/market/me/balance | 我的经济余额（Vault/XConomy，轻量） |
 | POST | /api/market/order | 挂单：`{type:"buy"|"sell", item_id, price, quantity?, item_base64?}` |
 | POST | /api/market/order/:order_id/cancel | 撤单：`{admin?:bool}` |
 | POST | /api/market/trade | 市价：`{type:"market_buy"|"market_sell"|"quick_sell", item_id, quantity?}` |
 | POST | /api/market/warehouse/deposit | 存仓：`{type:"money", amount} 或 {type:"hand", quantity?}` |
 | POST | /api/market/warehouse/withdraw | 取仓：`{type:"all"|"money"|"item", amount?, item_base64?}` |
 | POST | /api/market/exchange | 兑换：`{type:"d2m"|"m2d"}` |
+
+字段已对齐（新旧并存）：商品 `item_id`/`name`/`volume`（=`volume_today`）、挂单 `order_id`/`type`(buy/sell)/`name`、
+成交 `trade_id`/`type`/`time`/`fee`、仓库 `money`(=`money_balance`)/`balance`/物品 `item_id`/`name`、
+信息 `tax_rate`(=`tax_rate_percent`)/`notice`(=`announcement`，多公告以换行合并)。
+
+> 网页设计详细稿件见 `docs/market-web-design.md`。
 
 ## 团队（module=team，传送相关已去除）
 

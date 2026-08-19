@@ -9,6 +9,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -43,156 +44,124 @@ public class MarketModule implements BridgeModule {
         if (market == null) {
             return result(false, "市场插件未启用或未安装", null);
         }
-        Map<String, Object> r;
+        Object r;
         try {
-            switch (action) {
+            r = switch (action) {
                 case "list_items":
-                    r = market.listItems();
-                    break;
+                    yield market.listItems();
                 case "list_items_page":
-                    r = market.listItems(
+                    yield market.listItems(
                         strField(payload, "player_uuid"),
                         boolField(payload, "buy_page"),
                         strField(payload, "query"),
                         intField(payload, "page"),
                         intField(payload, "page_size")
                     );
-                    break;
                 case "item_detail":
-                    r = market.itemDetail(intField(payload, "item_id"));
-                    break;
+                    yield market.itemDetail(intField(payload, "item_id"));
                 case "item_detail_full":
-                    r = market.itemDetail(
+                    yield market.itemDetail(
                         strField(payload, "player_uuid"),
                         intField(payload, "item_id"),
                         boolField(payload, "buy_page"),
                         intField(payload, "page"),
                         intField(payload, "page_size")
                     );
-                    break;
                 case "order_book":
-                    r = market.orderBook(intField(payload, "item_id"));
-                    break;
+                    yield market.orderBook(intField(payload, "item_id"));
                 case "my_history":
-                    r = market.myHistory(strField(payload, "player_uuid"), intField(payload, "page"), intField(payload, "page_size"));
-                    break;
+                    yield market.myHistory(strField(payload, "player_uuid"), intField(payload, "page"), intField(payload, "page_size"));
                 case "my_orders":
-                    r = market.myOrders(strField(payload, "player_uuid"));
-                    break;
+                    yield market.myOrders(strField(payload, "player_uuid"));
                 case "my_trades":
-                    r = market.myTrades(strField(payload, "player_uuid"), intField(payload, "page"), intField(payload, "size"));
-                    break;
+                    yield market.myTrades(strField(payload, "player_uuid"), intField(payload, "page"), intField(payload, "size"));
                 case "my_warehouse":
-                    r = market.myWarehouse(strField(payload, "player_uuid"));
-                    break;
+                    yield market.myWarehouse(strField(payload, "player_uuid"));
+                case "my_balance":
+                    yield market.myBalance(strField(payload, "player_uuid"));
                 case "market_info":
-                    r = market.marketInfo();
-                    break;
+                    yield market.marketInfo();
                 case "announcements":
-                    r = market.announcements(intField(payload, "page"), intField(payload, "page_size"));
-                    break;
+                    yield market.announcements(intField(payload, "page"), intField(payload, "page_size"));
                 case "catalog_search":
-                    r = market.catalogSearch(strField(payload, "query"));
-                    break;
+                    yield market.catalogSearch(strField(payload, "query"));
                 case "supply_plan":
-                    r = market.supplyPlan(strField(payload, "player_uuid"), intField(payload, "item_id"));
-                    break;
+                    yield market.supplyPlan(strField(payload, "player_uuid"), intField(payload, "item_id"));
                 case "place_buy":
-                    r = market.placeBuy(strField(payload, "player_uuid"), intField(payload, "item_id"),
+                    yield market.placeBuy(strField(payload, "player_uuid"), intField(payload, "item_id"),
                             decField(payload, "price"), intField(payload, "quantity"));
-                    break;
                 case "place_sell":
-                    r = market.placeSell(strField(payload, "player_uuid"), intField(payload, "item_id"),
+                    yield market.placeSell(strField(payload, "player_uuid"), intField(payload, "item_id"),
                             decField(payload, "price"), intField(payload, "quantity"));
-                    break;
                 case "place_sell_item":
-                    r = market.placeSell(strField(payload, "player_uuid"), intField(payload, "item_id"),
+                    yield market.placeSell(strField(payload, "player_uuid"), intField(payload, "item_id"),
                             decField(payload, "price"), intField(payload, "quantity"), strField(payload, "item_base64"));
-                    break;
                 case "cancel":
-                    r = market.cancel(strField(payload, "player_uuid"), intField(payload, "order_id"), boolField(payload, "admin"));
-                    break;
+                    yield market.cancel(strField(payload, "player_uuid"), intField(payload, "order_id"), boolField(payload, "admin"));
                 case "withdraw_order":
-                    r = market.withdrawOrderQuantity(
+                    yield market.withdrawOrderQuantity(
                         strField(payload, "player_uuid"),
                         intField(payload, "order_id"),
                         intField(payload, "quantity"),
                         boolField(payload, "admin")
                     );
-                    break;
                 case "market_buy":
-                    r = market.marketBuy(strField(payload, "player_uuid"), intField(payload, "item_id"), intField(payload, "quantity"));
-                    break;
+                    yield market.marketBuy(strField(payload, "player_uuid"), intField(payload, "item_id"), intField(payload, "quantity"));
                 case "market_sell":
-                    r = market.marketSell(strField(payload, "player_uuid"), intField(payload, "item_id"), intField(payload, "quantity"));
-                    break;
+                    yield market.marketSell(strField(payload, "player_uuid"), intField(payload, "item_id"), intField(payload, "quantity"));
                 case "direct_buy":
-                    r = market.directBuy(strField(payload, "player_uuid"), intField(payload, "sell_order_id"), intField(payload, "quantity"));
-                    break;
+                    yield market.directBuy(strField(payload, "player_uuid"), intField(payload, "sell_order_id"), intField(payload, "quantity"));
                 case "direct_sell":
-                    r = market.directSell(strField(payload, "player_uuid"), intField(payload, "buy_order_id"), intField(payload, "quantity"));
-                    break;
+                    yield market.directSell(strField(payload, "player_uuid"), intField(payload, "buy_order_id"), intField(payload, "quantity"));
                 case "quick_sell":
-                    r = market.quickSell(strField(payload, "player_uuid"), intField(payload, "item_id"));
-                    break;
+                    yield market.quickSell(strField(payload, "player_uuid"), intField(payload, "item_id"));
                 case "supply_all":
-                    r = market.supplyAll(strField(payload, "player_uuid"), intField(payload, "item_id"));
-                    break;
+                    yield market.supplyAll(strField(payload, "player_uuid"), intField(payload, "item_id"));
                 case "register_item":
-                    r = market.registerCatalogItem(strField(payload, "player_uuid"), strField(payload, "item_base64"), boolField(payload, "admin"));
-                    break;
+                    yield market.registerCatalogItem(strField(payload, "player_uuid"), strField(payload, "item_base64"), boolField(payload, "admin"));
                 case "exchange_d2m":
-                    r = market.exchangeDiamondForMoney(strField(payload, "player_uuid"));
-                    break;
+                    yield market.exchangeDiamondForMoney(strField(payload, "player_uuid"));
                 case "exchange_m2d":
-                    r = market.exchangeMoneyForDiamond(strField(payload, "player_uuid"));
-                    break;
+                    yield market.exchangeMoneyForDiamond(strField(payload, "player_uuid"));
                 case "deposit_money":
-                    r = market.depositMoney(strField(payload, "player_uuid"), decField(payload, "amount"));
-                    break;
+                    yield market.depositMoney(strField(payload, "player_uuid"), decField(payload, "amount"));
                 case "withdraw_money":
-                    r = market.withdrawMoney(strField(payload, "player_uuid"), decField(payload, "amount"));
-                    break;
+                    yield market.withdrawMoney(strField(payload, "player_uuid"), decField(payload, "amount"));
                 case "warehouse_deposit_hand":
-                    r = market.depositHandItem(strField(payload, "player_uuid"), intField(payload, "quantity"));
-                    break;
+                    yield market.depositHandItem(strField(payload, "player_uuid"), intField(payload, "quantity"));
                 case "warehouse_withdraw_all":
-                    r = market.warehouseWithdrawAll(strField(payload, "player_uuid"));
-                    break;
+                    yield market.warehouseWithdrawAll(strField(payload, "player_uuid"));
                 case "warehouse_withdraw_money":
-                    r = market.warehouseWithdrawMoney(strField(payload, "player_uuid"));
-                    break;
+                    yield market.warehouseWithdrawMoney(strField(payload, "player_uuid"));
                 case "warehouse_withdraw_item":
-                    r = market.warehouseWithdrawItem(strField(payload, "player_uuid"), strField(payload, "item_base64"));
-                    break;
+                    yield market.warehouseWithdrawItem(strField(payload, "player_uuid"), strField(payload, "item_base64"));
                 case "market_stats":
-                    r = market.getMarketStats(intField(payload, "days"));
-                    break;
+                    yield market.getMarketStats(intField(payload, "days"));
                 case "admin_suspend":
-                    r = market.adminSuspend(intField(payload, "item_id"), boolField(payload, "suspend"));
-                    break;
+                    yield market.adminSuspend(boolField(payload, "admin"), intField(payload, "item_id"), boolField(payload, "suspend"));
                 case "admin_set_tax":
-                    r = market.adminSetTax(decField(payload, "percent"));
-                    break;
+                    yield market.adminSetTax(boolField(payload, "admin"), decField(payload, "percent"));
                 case "admin_announcement":
-                    r = market.adminAnnouncement(strField(payload, "action"), intField(payload, "id"), strField(payload, "content"));
-                    break;
+                    yield market.adminAnnouncement(boolField(payload, "admin"), strField(payload, "action"), intField(payload, "id"), strField(payload, "content"));
                 case "admin_reload":
-                    r = market.adminReload();
-                    break;
+                    yield market.adminReload(boolField(payload, "admin"));
                 case "admin_reconnect":
-                    r = market.adminReconnectDb();
-                    break;
+                    yield market.adminReconnectDb(boolField(payload, "admin"));
                 default:
-                    return null;
-            }
+                    yield null;
+            };
         } catch (Exception e) {
             plugin.getLogger().warning("[market] 执行失败: " + action + " -> " + e.getMessage());
             return result(false, "市场操作失败: " + e.getMessage(), null);
         }
-        boolean ok = Boolean.TRUE.equals(r.get("ok"));
-        Object data = r.get("data");
-        Object message = r.get("message");
+        if (r == null) return null;
+        if (r instanceof List) {
+            return result(true, "", r);
+        }
+        Map<String, Object> m = (Map<String, Object>) r;
+        boolean ok = Boolean.TRUE.equals(m.get("ok"));
+        Object data = m.get("data");
+        Object message = m.get("message");
         return result(ok, message == null ? "" : String.valueOf(message), data);
     }
 

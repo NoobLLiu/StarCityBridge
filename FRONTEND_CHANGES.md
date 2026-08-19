@@ -17,6 +17,31 @@
 
 （按时间倒序；无前端影响的条目也会记录后端变动，便于追溯）
 
+### 2026-08-19 · 市场系统可用性修复：字段对齐 + 数组返回 + 余额展示（市场专项）
+
+**背景**：市场此前“有一点对接但不能用不能看”——返回结构/字段与前端契约不符
+（挂单不是数组、盘口字段名不一致、仓库/信息字段对不上、分页 total 缺失），导致页面空白或报错。
+
+**后端变动（stockexchange-patched + StarCityBridge）**
+- stockexchange-patched `WebMarketManager`：
+  - 字段对齐（新旧并存）：商品 `item_id`(字符串)/`name`/`volume`；挂单 `order_id`/`type`(buy/sell)/`name`；
+    成交 `trade_id`/`type`/`time`/`fee`；仓库 `money`(=money_balance) + 物品 `item_id`/`name`；
+    信息 `tax_rate`(=tax_rate_percent)/`notice`(=announcement)。
+  - `myOrders` 改为**直接返回数组**（前端契约 `MarketOrder[]`）。
+  - `myTrades` 分页对齐：返回 `items`/`total`/`page`/`page_size`。
+  - `listItems` 增加 `total`（=total_items，修复分页总条数）。
+  - `orderBook` 增加 `item_id`/`buys`/`sells`。
+  - 新增 `myBalance`：经 **Vault（经济核心，底层 XConomy）** 读取玩家经济余额；`myWarehouse` 也附带
+    `balance`/`currency_name`/`economy_available`（经济不可用时 `balance=null`，不报错）。
+  - 管理动作（停牌/税率/公告/重载/重连）增加 `admin` 标志守卫（本迭代未暴露 HTTP 路由）。
+- StarCityBridge：
+  - `MarketModule` 支持数组 data（`my_orders`）、新增 `my_balance` 动作、管理动作透传 `admin`。
+  - `HttpApiServer` 新增路由 `GET /api/market/me/balance`。
+
+**API 文档**：`WEB_API.md` 市场段已更新；网页设计详细稿件见 `docs/market-web-design.md`。
+
+**前端修改**：需要，见下方提示词。
+
 ### 2026-08-19 · 团队系统全面可用：MGTeam-JE 导出层权限校验 + 字段对齐（团队专项）
 
 **背景**：此前团队接口“有一点对接但不能用不能看”——只读接口无权限校验、字段契约与前端不符、
@@ -58,6 +83,32 @@
 > 1. 后端现状与 API 文档位置（`WEB_API.md`）；
 > 2. 本次改动的接口/字段变动；
 > 3. 前端需要修改的页面、组件、状态管理或请求封装。
+
+### 市场系统对接修复（2026-08-19）
+
+请修复网页平台「市场系统」，使其与游戏内 StockExchange 行为一致。后端 API 文档：
+`StarCityBridge/WEB_API.md`（市场段），网页设计详细稿件：`StarCityBridge/docs/market-web-design.md`。
+请求头 `Authorization: Bearer <token>`，响应统一 `{code, message, data}`，`code=0` 成功；`player_uuid` 由后端从 token 自动注入。
+
+**关键改动（必须适配）**
+1. `GET /api/market/me/orders` 的 `data` 现在是**数组**（不是 `{orders:[...]}`）；请把请求封装/类型改为 `MarketOrder[]`。
+2. 字段统一用新名：商品 `item_id`(字符串)/`name`/`volume`；挂单 `order_id`/`type`(小写 buy/sell)/`name`；
+   成交 `trade_id`/`type`/`time`/`fee`；仓库 `money` + 物品 `item_id`/`name`；信息 `tax_rate`/`notice`。
+3. `GET /api/market/me/trades` 返回 `{items, total, page, page_size}`，可直接用于分页。
+4. `GET /api/market/me/warehouse` 新增 `balance`/`currency_name`/`economy_available`；`balance` 可能为 `null`，显示占位。
+5. 新增轻量余额接口 `GET /api/market/me/balance`（`{balance, currency_name, economy_available, warehouse_money}`）。
+
+**需要实现的页面/逻辑（详见设计稿件）**
+- 行情列表页：出售/求购视角切换、搜索、分页（用 `total`）、点行加载盘口。
+- 品种详情/盘口：`buys`/`sells` 聚合档位 + 快捷市价/快速上架；挂单标注本人可撤/取回。
+- 挂单弹窗：买/卖、价格/数量校验（后端中文提示）、卖单可选 `item_base64`。
+- 我的交易：挂单（数组、可撤销）、成交（分页）、仓库（余额 + 物品 + 存/取仓）。
+- 钻石兑换弹窗：d2m/m2d，展示汇率/税率/预计到手；提交 `POST /api/market/exchange`。
+- 余额展示：仓库页与兑换页顶部显示经济余额（Vault/XConomy），不可用时显示占位。
+- 离线提示：手持存入/提取到背包类操作返回“该操作需要玩家在线”，直接 toast 展示。
+
+**验收**：列表能正常显示商品与分页总条数；我的挂单/成交/仓库能正常显示与操作；
+盘口能显示买盘卖盘；兑换与余额展示正常；所有规则错误以后端 message 展示。
 
 ### 团队系统对接修复（2026-08-19）
 
