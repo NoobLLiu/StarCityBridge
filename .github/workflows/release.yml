@@ -47,7 +47,8 @@ jobs:
           cp build/StockExchange-1.0.0-gmzc.jar "$GITHUB_WORKSPACE/deps/"
       - name: Install dependencies into local Maven repository
         run: |
-          mvn -B -q install:install-file -Dfile=deps/Residence*.jar -DgroupId=Residence -DartifactId=Residence -Dversion=6.0.2.2 -Dpackaging=jar
+          RES_FILE=$(find deps -name 'Residence*.jar' | head -n 1)
+          mvn -B -q install:install-file -Dfile="$RES_FILE" -DgroupId=Residence -DartifactId=Residence -Dversion=6.0.2.2 -Dpackaging=jar
           mvn -B -q install:install-file -Dfile=deps/AuthMe-5.7.0-FORK-Universal.jar -DgroupId=fr.xephi.authme -DartifactId=authme -Dversion=5.7.0-FORK -Dpackaging=jar
           mvn -B -q install:install-file -Dfile=deps/MGTeam-1.0.0.jar -DgroupId=cn.gmzc.mgteam -DartifactId=mgteam -Dversion=1.0.0 -Dpackaging=jar
           mvn -B -q install:install-file -Dfile=deps/StockExchange-1.0.0-gmzc.jar -DgroupId=com.github.exchange -DartifactId=stockexchange -Dversion=1.0.0-gmzc -Dpackaging=jar
