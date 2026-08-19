@@ -4,11 +4,11 @@ import com.google.gson.JsonObject;
 
 /**
  * 数据整合模块接口：每个插件对接（如登录插件 AuthMe）实现为一个模块，
- * 处理来自网站后端的请求，并可向后端推送事件。
+ * 处理来自网页后端（HTTP REST）的请求。
  */
 public interface BridgeModule {
 
-    /** 模块名（消息路由用），如 "authme" */
+    /** 模块名（请求路由用），如 "authme" */
     String name();
 
     /**

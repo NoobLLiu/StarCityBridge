@@ -11,18 +11,15 @@ import com.starcity.bridge.module.team.TeamModule;
 import com.starcity.bridge.module.ticket.TicketModule;
 import com.starcity.bridge.web.HttpApiServer;
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-
-import java.util.logging.Level;
-import com.starcity.bridge.ws.WsClient;
-import com.starcity.bridge.ws.WsServer;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.logging.Level;
+
 /**
  * StarCityBridge 数据整合插件主类。
- * <p>职责：启动 WS 客户端连接网站后端，注册各插件对接模块，
- * 统一在服务器与网站之间交换数据。</p>
+ * <p>插件本身即网站后端：内建 HTTP REST API（web.HttpApiServer），
+ * 统一对接 AuthMe/市场/团队/领地等插件模块，供前端直接调用。</p>
  */
 public final class StarCityBridge extends JavaPlugin {
 
@@ -31,8 +28,6 @@ public final class StarCityBridge extends JavaPlugin {
 
     private PluginConfig pluginConfig;
     private ModuleManager moduleManager;
-    private WsClient wsClient;
-    private WsServer wsServer;
     private HttpApiServer httpServer;
     private ConsistentBackupScheduler backupScheduler;
 
@@ -44,14 +39,9 @@ public final class StarCityBridge extends JavaPlugin {
         return pluginConfig;
     }
 
-    public WsClient wsClient() {
-        return wsClient;
-    }
-
     public Gson gson() {
         return GSON;
     }
-
 
     /** 是否处于静音模式（命令不返回消息，配置持久化，重启仍生效） */
     public boolean isQuietMode() {
@@ -66,21 +56,6 @@ public final class StarCityBridge extends JavaPlugin {
         pluginConfig = PluginConfig.from(getConfig());
         getLogger().setLevel(next ? Level.OFF : Level.INFO);
         return next;
-    }
-    public java.util.concurrent.CompletableFuture<JsonObject> request(String module, String action, JsonObject payload) {
-        if (wsServer != null) {
-            return wsServer.request(module, action, payload);
-        }
-        return wsClient.request(module, action, payload);
-    }
-
-    /** 向网站后端推送事件（兼容两种连接模式） */
-    public void sendEvent(String module, String action, JsonObject payload) {
-        if (wsServer != null) {
-            wsServer.sendEvent(module, action, payload);
-        } else {
-            wsClient.sendEvent(module, action, payload);
-        }
     }
 
     public ModuleManager modules() {
@@ -105,14 +80,6 @@ public final class StarCityBridge extends JavaPlugin {
             moduleManager.register(new AuthMeModule(this));
         }
 
-        if ("server".equalsIgnoreCase(pluginConfig.connectionMode())) {
-            wsServer = new WsServer(this, pluginConfig, moduleManager);
-            wsServer.start();
-        } else {
-            wsClient = new WsClient(this, pluginConfig, moduleManager);
-            wsClient.connect();
-        }
-
         if (pluginConfig.webApiEnabled()) {
             httpServer = new HttpApiServer(this, pluginConfig);
             try {
@@ -132,19 +99,13 @@ public final class StarCityBridge extends JavaPlugin {
         backupScheduler = new ConsistentBackupScheduler(this, pluginConfig);
         backupScheduler.start();
 
-        getLogger().info("StarCityBridge 已启用，后端: " + pluginConfig.backendUrl());
+        getLogger().info("StarCityBridge 已启用，网页后端: http://" + pluginConfig.webApiHost() + ":" + pluginConfig.webApiPort() + "/api");
     }
 
     @Override
     public void onDisable() {
         if (backupScheduler != null) {
             backupScheduler.stop();
-        }
-        if (wsClient != null) {
-            wsClient.close();
-        }
-        if (wsServer != null) {
-            wsServer.stop();
         }
         if (httpServer != null) {
             httpServer.stop();

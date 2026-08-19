@@ -9,14 +9,11 @@ softdepend: [AuthMe, StockExchange, MGTeam, Residence]
 
 commands:
   site:
-    description: 网站账户相关命令（绑定状态 / 重置网站密码）
-    usage: /site <bind|resetpw <新密码>>
+    description: 网站账户相关命令（绑定状态）
+    usage: /site <bind>
     aliases: [web]
 
 permissions:
   starcitybridge.site.bind:
     description: 查看网站账户绑定状态
-    default: true
-  starcitybridge.site.resetpw:
-    description: 在游戏内重置网站密码
     default: true

@@ -5,18 +5,13 @@ import com.starcity.bridge.StarCityBridge;
 import com.starcity.bridge.module.BridgeModule;
 import com.starcity.bridge.module.ModuleManager;
 import fr.xephi.authme.api.v3.AuthMeApi;
-import fr.xephi.authme.events.EmailConfirmedEvent;
 import org.bukkit.Bukkit;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
-import org.bukkit.event.Listener;
 
 /**
  * 登录插件（AuthMe）对接模块。
- * <p>提供网站后端请求处理：邮箱绑定状态查询、绑定校验；
- * 监听邮箱确认完成事件并推送给后端。</p>
+ * <p>提供网页后端请求处理：邮箱绑定状态查询、绑定校验、网站登录校验。</p>
  */
-public class AuthMeModule implements BridgeModule, Listener {
+public class AuthMeModule implements BridgeModule {
 
     private final StarCityBridge plugin;
 
@@ -31,7 +26,6 @@ public class AuthMeModule implements BridgeModule, Listener {
 
     @Override
     public void onRegister(ModuleManager manager) {
-        plugin.getServer().getPluginManager().registerEvents(this, plugin);
     }
 
     @Override
@@ -87,19 +81,6 @@ public class AuthMeModule implements BridgeModule, Listener {
     }
 
     /**
-     * 玩家通过 /email confirm 完成邮箱绑定后，通知网站后端。
-     */
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
-    public void onEmailConfirmed(EmailConfirmedEvent event) {
-        JsonObject payload = new JsonObject();
-        payload.addProperty("player", event.getPlayer().getName());
-        payload.addProperty("email", event.getEmail());
-        plugin.sendEvent("authme", "email_confirmed", payload);
-        plugin.getLogger().info("邮箱绑定完成事件已推送: " + event.getPlayer().getName() + " -> " + event.getEmail());
-    }
-
-
-    /**
      * 网站登录校验：邮箱 + 服务器内登录密码。
      * 返回 {available, valid, player, player_uuid, email, is_op}
      */
@@ -146,6 +127,7 @@ public class AuthMeModule implements BridgeModule, Listener {
         }
         return out;
     }
+
     private AuthMeApi api() {
         if (Bukkit.getPluginManager().getPlugin("AuthMe") == null) {
             return null;

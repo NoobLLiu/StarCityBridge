@@ -7,7 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * 模块管理器：按模块名路由后端请求，并统一注册/卸载模块。
+ * 模块管理器：按模块名路由网页后端（HTTP REST）请求，并统一注册/卸载模块。
  */
 public class ModuleManager {
 
@@ -30,7 +30,7 @@ public class ModuleManager {
     }
 
     /**
-     * 处理来自后端 WS 的请求，返回响应数据；模块不存在或不支持时返回 null。
+     * 处理来自网页后端的请求，返回响应数据；模块不存在或不支持时返回 null。
      */
     public JsonObject handleRequest(String moduleName, String action, JsonObject payload) {
         BridgeModule module = modules.get(moduleName);

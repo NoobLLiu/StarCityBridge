@@ -1,28 +1,10 @@
 # StarCityBridge 数据整合插件配置
-backend:
-  # 网站后端 WebSocket 地址（插件网关）
-  url: "ws://localhost:8080/api/ws/plugin"
-  # 插件令牌，须与网站后端 .env 中的 PLUGIN_TOKEN 一致
-  token: "change_me_plugin_token"
-  # 断线重连间隔（秒）
-  reconnect-delay-seconds: 5
-  # 心跳间隔（秒）
-  heartbeat-seconds: 20
+# 插件本身即网站后端：内建 HTTP REST API（web-api 段），前端直接调用。
 
 modules:
   authme:
     # 登录插件（AuthMe）对接开关
     enabled: true
-# 连接模式：server=插件监听端口等待网站后端连接（反向模式，推荐，后端不需要公网）
-#          client=插件主动连接后端（旧模式，后端需要公网）
-connection:
-  mode: server
-
-# 反向模式服务端配置
-server:
-  host: 0.0.0.0
-  port: 8082
-  path: /ws
 
 # 静音模式：true 时 /site 命令不再返回消息（重启后仍生效），再次 /site mute 恢复
 settings:
@@ -53,4 +35,3 @@ web-api:
   admin-token: "change_me_admin_token"
   # 允许的 CORS 源（* 表示任意，生产环境建议改成前端域名）
   cors-origin: "*"
-
