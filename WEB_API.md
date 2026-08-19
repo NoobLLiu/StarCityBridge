@@ -29,6 +29,9 @@ Header `Authorization: Bearer <token>`，返回当前玩家信息。
 ### GET /health
 公开健康检查：`{ status:"ok", plugin:"StarCityBridge", version:"0.1.0", online_players:n }`
 
+### GET /settings/public
+公开站点信息：`{ server_name:"StarCity", web_backend:"plugin", plugin_version:"..." }`
+
 ---
 
 ## 市场（module=market）
@@ -80,6 +83,26 @@ Header `Authorization: Bearer <token>`，返回当前玩家信息。
 | POST | /api/team/:tid/message | `{content}` |
 
 
+## 领地（module=residence，对接 Zrips/Residence 本体公开接口）
+
+> 只读接口所有登录玩家可用；写接口仅限「领地主人 / 父领地主人」。
+> 子领地用 `父领地.子领地` 路径访问（例如 `res1.sub2`）。
+> 所有操作在服务器主线程串行执行，写操作按领地加锁，避免网页与游戏内同时操作导致数据异常。
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | /api/residences?page=&page_size=&query=&owner=&mine= | 领地列表；`mine=true` 只看自己的 |
+| GET | /api/residences/:residence | 领地详情（区域边界/子领地/权限/租售/银行/提示语） |
+| GET | /api/residences/:residence/flags | 领地 flag 与全部可用 flag（possible_flags） |
+| GET | /api/residences/:residence/players/:player/flags | 某玩家（玩家名或 UUID）在此领地的 flag |
+| POST | /api/residences/:residence/flags | 设置领地 flag：`{flag, state:"true"|"false"|"remove"}` |
+| POST | /api/residences/:residence/players/:player/flags | 设置玩家 flag：`{flag, state:"true"|"false"|"remove"}` |
+| POST | /api/residences/:residence/players/:player/remove | 移除玩家单个 flag：`{flag}` |
+| POST | /api/residences/:residence/players/:player/clear | 清空玩家全部 flag |
+| POST | /api/residences/:residence/apply-defaults | 重置为默认权限 |
+| POST | /api/residences/:residence/message | 设置进出提示语：`{type:"enter"|"leave", message}`（message 为空=清除） |
+
+常见返回字段：`name / owner / owner_uuid / world / areas / subzones / flags / player_flags / trusted_players / enter_message / leave_message / for_sale / sell_price / for_rent / rentable / rented_detail / bank / created_at / size`。
 ## 工单（module=ticket，数据保存在插件 data/tickets.json）
 
 | 方法 | 路径 | 说明 |
@@ -97,17 +120,5 @@ Header `Authorization: Bearer <token>`，返回当前玩家信息。
 | GET | /api/admin/tickets/:id | 工单详情 |
 | POST | /api/admin/tickets/:id/reply | 管理员回复：`{content}` |
 | POST | /api/admin/tickets/:id/status | 改状态：`{status:"OPEN"|"CLOSED"}` |
-## 管理（需要 X-Admin-Token）
 
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| GET | /api/admin/team/all?page=&page_size= | 全部团队（含私密） |
-| POST | /api/admin/team/sync-names | 同步团队成员/申请/队伍锚点名字 |
-| POST | /api/admin/team/reload | 重载团队配置 |
-| POST | /api/admin/team/:tid/disband | `{confirm_name}` |
-| GET | /api/admin/market/stats?days= | 市场行情统计 |
-| POST | /api/admin/market/:item_id/suspend | `{suspend:bool}` 停牌/复牌 |
-| POST | /api/admin/market/tax | `{percent}` |
-| POST | /api/admin/market/announcement | `{action, id?, content}` |
-
-> 管理后台接口中：工单功能已在本版本内置；RBAC/审计/文件管理/备份/商店等其余管理后台接口仍在后续迭代分批并入。
+> 管理后台按需求只保留工单功能；RBAC/审计/文件管理/备份/商店等不在本平台范围内。

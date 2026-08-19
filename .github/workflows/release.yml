@@ -1,0 +1,59 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      - name: Build Residence 6.0.2.2
+        run: |
+          git clone --depth 1 https://github.com/Zrips/Residence.git /tmp/residence
+          cd /tmp/residence
+          mvn -B -q package -DskipTests -Dmaven.javadoc.skip=true -Dmaven.source.skip=true -Denforcer.skip=true
+          mkdir -p "$GITHUB_WORKSPACE/deps"
+          cp target/Residence6.0.2.2.jar "$GITHUB_WORKSPACE/deps/"
+      - name: Build AuthMe 5.7.0-FORK
+        run: |
+          git clone --depth 1 -b feat/agent-mail https://github.com/NoobLiu/AuthMeReReloaded.git /tmp/authme
+          cd /tmp/authme
+          mvn -B -q package -DskipTests
+          cp target/AuthMe-5.7.0-FORK-Universal.jar "$GITHUB_WORKSPACE/deps/"
+      - name: Build MGTeam 1.0.0
+        run: |
+          git clone --depth 1 -b main https://github.com/NoobLiu/MGTeam-JE.git /tmp/mgteam
+          cd /tmp/mgteam
+          bash ci/build.sh
+          cp build/MGTeam-1.0.0.jar "$GITHUB_WORKSPACE/deps/"
+      - name: Build StockExchange 1.0.0-gmzc
+        run: |
+          git clone --depth 1 -b master https://github.com/NoobLiu/stockexchange-patched.git /tmp/stockexchange
+          cd /tmp/stockexchange
+          RESIDENCE_JAR="$GITHUB_WORKSPACE/deps/Residence6.0.2.2.jar" bash ci/build.sh
+          cp build/StockExchange-1.0.0-gmzc.jar "$GITHUB_WORKSPACE/deps/"
+      - name: Install dependencies into local Maven repository
+        run: |
+          mvn -B -q install:install-file -Dfile=deps/Residence6.0.2.2.jar -DgroupId=Residence -DartifactId=Residence -Dversion=6.0.2.2 -Dpackaging=jar
+          mvn -B -q install:install-file -Dfile=deps/AuthMe-5.7.0-FORK-Universal.jar -DgroupId=fr.xephi.authme -DartifactId=authme -Dversion=5.7.0-FORK -Dpackaging=jar
+          mvn -B -q install:install-file -Dfile=deps/MGTeam-1.0.0.jar -DgroupId=cn.gmzc.mgteam -DartifactId=mgteam -Dversion=1.0.0 -Dpackaging=jar
+          mvn -B -q install:install-file -Dfile=deps/StockExchange-1.0.0-gmzc.jar -DgroupId=com.github.exchange -DartifactId=stockexchange -Dversion=1.0.0-gmzc -Dpackaging=jar
+      - name: Build StarCityBridge
+        run: mvn -B package
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: ci/RELEASE_NOTES.md
+          files: |
+            target/StarCityBridge.jar

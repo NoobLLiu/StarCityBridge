@@ -3,9 +3,9 @@ version: 0.1.0
 main: com.starcity.bridge.StarCityBridge
 api-version: '1.21'
 authors: [StarCity]
-description: 数据整合插件：统一与 StarCity 网站后端通过 WebSocket 通信
+description: StarCity 数据桥接插件：内建网页后端（HTTP REST），统一对接 AuthMe/市场/团队/领地等插件
 website: https://github.com/NoobLLiu/StarCityBridge
-softdepend: [AuthMe, StockExchange, MGTeam, ResidenceList, Residence]
+softdepend: [AuthMe, StockExchange, MGTeam, Residence]
 
 commands:
   site:

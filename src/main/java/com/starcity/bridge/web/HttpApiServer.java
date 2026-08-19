@@ -107,20 +107,22 @@ public final class HttpApiServer {
         portal( "POST", "/api/team/:tid/funds/deposit",       "team", "deposit_funds");
         portal( "POST", "/api/team/:tid/funds/withdraw",      "team", "withdraw_funds");
         portal( "POST", "/api/team/:tid/message",             "team", "post_message");
+        portal( "GET",  "/api/residences",                      "residence", "list");
+        portal( "GET",  "/api/residences/:residence",           "residence", "detail");
+        portal( "GET",  "/api/residences/:residence/flags",     "residence", "flags");
+        portal( "GET",  "/api/residences/:residence/players/:player/flags", "residence", "player_flags");
+        portal( "POST", "/api/residences/:residence/flags",     "residence", "set_flag");
+        portal( "POST", "/api/residences/:residence/players/:player/flags", "residence", "set_player_flag");
+        portal( "POST", "/api/residences/:residence/players/:player/remove", "residence", "remove_player_flag");
+        portal( "POST", "/api/residences/:residence/players/:player/clear",  "residence", "clear_player_flags");
+        portal( "POST", "/api/residences/:residence/apply-defaults",         "residence", "apply_default_flags");
+        portal( "POST", "/api/residences/:residence/message",                "residence", "set_message");
         portal( "GET",  "/api/tickets",                      "ticket", "list_mine");
         portal( "POST", "/api/tickets",                      "ticket", "create");
         portal( "GET",  "/api/tickets/:id",                  "ticket", "detail");
         portal( "POST", "/api/tickets/:id/reply",            "ticket", "reply");
 
-        // 管理（admin 令牌 / is_op 玩家）
-        admin("GET",  "/api/admin/team/all",                "team", "all");
-        admin("POST", "/api/admin/team/sync-names",         "team", "admin_sync_names");
-        admin("POST", "/api/admin/team/reload",             "team", "admin_reload");
-        admin("POST", "/api/admin/team/:tid/disband",       "team", "admin_disband");
-        admin("GET",  "/api/admin/market/stats",            "market", "market_stats");
-        admin("POST", "/api/admin/market/:item_id/suspend",  "market", "admin_suspend");
-        admin("POST", "/api/admin/market/tax",              "market", "admin_set_tax");
-        admin("POST", "/api/admin/market/announcement",     "market", "admin_announcement");
+        // 管理（admin 令牌 / is_op 玩家）-- 按需求：管理后台只保留工单功能
         admin("GET",  "/api/admin/tickets",                  "ticket", "admin_list");
         admin("GET",  "/api/admin/tickets/:id",              "ticket", "admin_detail");
         admin("POST", "/api/admin/tickets/:id/reply",        "ticket", "admin_reply");
