@@ -113,6 +113,8 @@ public final class HttpApiServer {
         portal( "POST", "/api/team/:tid/message/read",        "team", "mark_messages_read");
         portal( "POST", "/api/team/:tid/notice/read",         "team", "mark_notice_read");
         portal( "GET",  "/api/residences",                      "residence", "list");
+        portal( "GET",  "/api/residences/market",               "residence", "market");
+        portal( "GET",  "/api/residences/me/rents",             "residence", "my_rents");
         portal( "GET",  "/api/residences/:residence",           "residence", "detail");
         portal( "GET",  "/api/residences/:residence/flags",     "residence", "flags");
         portal( "GET",  "/api/residences/:residence/players/:player/flags", "residence", "player_flags");
@@ -122,6 +124,18 @@ public final class HttpApiServer {
         portal( "POST", "/api/residences/:residence/players/:player/clear",  "residence", "clear_player_flags");
         portal( "POST", "/api/residences/:residence/apply-defaults",         "residence", "apply_default_flags");
         portal( "POST", "/api/residences/:residence/message",                "residence", "set_message");
+        portal( "POST", "/api/residences/:residence/rename",                 "residence", "rename");
+        portal( "POST", "/api/residences/:residence/mirror",                 "residence", "mirror_perms");
+        portal( "POST", "/api/residences/:residence/delete",                 "residence", "delete");
+        portal( "POST", "/api/residences/:residence/sell",                   "residence", "sell");
+        portal( "POST", "/api/residences/:residence/unlist-sell",            "residence", "unlist_sell");
+        portal( "POST", "/api/residences/:residence/unlist-rent",            "residence", "unlist_rent");
+        portal( "POST", "/api/residences/:residence/buy",                    "residence", "buy");
+        portal( "POST", "/api/residences/:residence/rent-settings",          "residence", "set_rent");
+        portal( "POST", "/api/residences/:residence/rent",                   "residence", "rent");
+        portal( "POST", "/api/residences/:residence/unrent",                 "residence", "unrent");
+        portal( "POST", "/api/residences/:residence/pay-rent",               "residence", "pay_rent");
+        portal( "POST", "/api/residences/:residence/transfer",               "residence", "transfer");
         portal( "GET",  "/api/tickets",                      "ticket", "list_mine");
         portal( "POST", "/api/tickets",                      "ticket", "create");
         portal( "GET",  "/api/tickets/:id",                  "ticket", "detail");
@@ -388,7 +402,7 @@ public final class HttpApiServer {
             Map<String, String> params = new LinkedHashMap<>();
             for (int i = 0; i < segs.length; i++) {
                 String w = want[i];
-                if (w.startsWith(":")) params.put(w.substring(1), segs[i]);
+                if (w.startsWith(":")) params.put(w.substring(1), urlDecode(segs[i]));
                 else if (!w.equals(segs[i])) { ok = false; break; }
             }
             if (ok) return r.with(params);

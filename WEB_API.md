@@ -121,15 +121,21 @@ Header `Authorization: Bearer <token>`，返回当前玩家信息。
 
 ## 领地（module=residence，对接 Zrips/Residence 本体公开接口）
 
-> 只读接口所有登录玩家可用；写接口仅限「领地主人 / 父领地主人」。
+> 页面设计参考 ResidenceList；接口完全以 Residence 本体公开 API 为准，**不改动 Residence 本体任何代码/接口**。
+> 只读接口所有登录玩家可用（后端按可见性过滤：服务器领地 / 非 hidden 领地 / 本人拥有 / 管理员）；
+> 写接口仅限「领地主人 / 父领地主人 / 管理员」。
 > 子领地用 `父领地.子领地` 路径访问（例如 `res1.sub2`）。
 > 所有操作在服务器主线程串行执行，写操作按领地加锁，避免网页与游戏内同时操作导致数据异常。
+> **需要玩家在线**的操作（购买/出租设置/租用/退租/支付租金/转让）：Residence 本体 API 只接受在线 `Player` 对象，
+> 离线时后端返回明确中文提示（"请先登录服务器"），不会抛错。
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| GET | /api/residences?page=&page_size=&query=&owner=&mine= | 领地列表；`mine=true` 只看自己的 |
-| GET | /api/residences/:residence | 领地详情（区域边界/子领地/权限/租售/银行/提示语） |
-| GET | /api/residences/:residence/flags | 领地 flag 与全部可用 flag（possible_flags） |
+| GET | /api/residences?page=&page_size=&query=&owner=&mine= | 领地列表（可见性过滤）；`mine=true` 只看自己的 |
+| GET | /api/residences/market?page=&page_size= | 领地市场：出售中 + 可租（未租出），`items[]` + `economy_enabled`/`rent_system_enabled` |
+| GET | /api/residences/me/rents | 我租用的领地（`rents[]`：租客/到期时间/自动支付） |
+| GET | /api/residences/:residence | 领地详情（区域边界/子领地/权限/租售/银行/提示语/`viewable`/`can_manage`/`hidden`/`teleport`[在线时]） |
+| GET | /api/residences/:residence/flags | 领地 flag：`flags`/`possible_flags` + `categories[]` 分类结构（含默认值/描述/可编辑性） |
 | GET | /api/residences/:residence/players/:player/flags | 某玩家（玩家名或 UUID）在此领地的 flag |
 | POST | /api/residences/:residence/flags | 设置领地 flag：`{flag, state:"true"|"false"|"remove"}` |
 | POST | /api/residences/:residence/players/:player/flags | 设置玩家 flag：`{flag, state:"true"|"false"|"remove"}` |
@@ -137,8 +143,24 @@ Header `Authorization: Bearer <token>`，返回当前玩家信息。
 | POST | /api/residences/:residence/players/:player/clear | 清空玩家全部 flag |
 | POST | /api/residences/:residence/apply-defaults | 重置为默认权限 |
 | POST | /api/residences/:residence/message | 设置进出提示语：`{type:"enter"|"leave", message}`（message 为空=清除） |
+| POST | /api/residences/:residence/rename | 重命名：`{new_name}` |
+| POST | /api/residences/:residence/mirror | 镜像权限：`{source}`（需同时拥有目标与源领地） |
+| POST | /api/residences/:residence/delete | 删除领地：`{confirm:true, confirm_name?}`（不可逆，主人/父主人/admin） |
+| POST | /api/residences/:residence/sell | 出售挂牌：`{price}`（无需在线） |
+| POST | /api/residences/:residence/unlist-sell | 取消出售挂牌（无需在线） |
+| POST | /api/residences/:residence/unlist-rent | 取消出租挂牌（未租出时，无需在线） |
+| POST | /api/residences/:residence/buy | 购买领地（**需玩家在线**） |
+| POST | /api/residences/:residence/rent-settings | 出租设置：`{cost, days, allow_renewing, stay_in_market, allow_auto_pay}`（**需玩家在线**） |
+| POST | /api/residences/:residence/rent | 租用：`{auto_pay?}`（**需玩家在线**） |
+| POST | /api/residences/:residence/unrent | 退租 / 强制退租（主人/租客/admin，**需玩家在线**） |
+| POST | /api/residences/:residence/pay-rent | 支付租金（续租，租客/admin，**需玩家在线**） |
+| POST | /api/residences/:residence/transfer | 转让：`{target}`（发起者+接收者均须在线） |
 
-常见返回字段：`name / owner / owner_uuid / world / areas / subzones / flags / player_flags / trusted_players / enter_message / leave_message / for_sale / sell_price / for_rent / rentable / rented_detail / bank / created_at / size`。
+常见返回字段：`name / owner / owner_uuid / world / areas / subzones / flags / player_flags / trusted_players / enter_message / leave_message / for_sale / sell_price / for_rent / rentable / rented_detail / bank / created_at / size / is_server_land / hidden / viewable / can_manage / economy_enabled / rent_system_enabled / teleport{world,x,y,z}`。
+
+> flags 分类结构示例：`categories[]{ key, name, flags[]{ flag, name, desc, default, mode, value(null|true|false), global_editable, player_editable } }`；
+> 市场行：`residence / name / owner / owner_uuid / world / type("sell"|"rent") / price / size / areas`（rent 额外 `days`/`renewable`）。
+
 ## 工单（module=ticket，数据保存在插件 data/tickets.json）
 
 | 方法 | 路径 | 说明 |

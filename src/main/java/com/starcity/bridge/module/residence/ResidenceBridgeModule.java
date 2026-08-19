@@ -1,6 +1,7 @@
 package com.starcity.bridge.module.residence;
 
 import com.bekvon.bukkit.residence.Residence;
+import com.bekvon.bukkit.residence.containers.Flags;
 import com.bekvon.bukkit.residence.containers.ResidencePlayer;
 import com.bekvon.bukkit.residence.economy.rent.RentableLand;
 import com.bekvon.bukkit.residence.economy.rent.RentedLand;
@@ -13,8 +14,11 @@ import com.google.gson.JsonObject;
 import com.starcity.bridge.StarCityBridge;
 import com.starcity.bridge.module.BridgeModule;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -63,7 +67,9 @@ public class ResidenceBridgeModule implements BridgeModule {
                 case "detail" -> read(() -> detail(payload));
                 case "flags" -> read(() -> flags(payload));
                 case "player_flags" -> read(() -> playerFlags(payload));
-                // 写（领地锁 + 主线程串行）
+                case "market" -> read(() -> market(payload));
+                case "my_rents" -> read(() -> myRents(payload));
+                // 写（领地锁 + 主线程串行）：以下操作不需要玩家在线（CommandSender / 无 Player 变体）
                 case "set_flag" -> write(residenceName(payload), () -> setFlag(payload));
                 case "set_player_flag" -> write(residenceName(payload), () -> setPlayerFlag(payload));
                 case "remove_player_flag" -> write(residenceName(payload), () -> removePlayerFlag(payload));
@@ -71,6 +77,19 @@ public class ResidenceBridgeModule implements BridgeModule {
                 case "apply_default_flags" -> write(residenceName(payload), () -> applyDefaultFlags(payload));
                 case "set_owner" -> write(residenceName(payload), () -> setOwner(payload));
                 case "set_message" -> write(residenceName(payload), () -> setMessage(payload));
+                case "rename" -> write(residenceName(payload), () -> rename(payload));
+                case "mirror_perms" -> write(residenceName(payload), () -> mirrorPerms(payload));
+                case "delete" -> write(residenceName(payload), () -> deleteRes(payload));
+                case "sell" -> write(residenceName(payload), () -> sell(payload));
+                case "unlist_sell" -> write(residenceName(payload), () -> unlistSell(payload));
+                case "unlist_rent" -> write(residenceName(payload), () -> unlistRent(payload));
+                // 写：需要玩家在线（Residence 交易/出租/转让 API 只接受 Player 对象，离线时返回明确提示）
+                case "buy" -> write(residenceName(payload), () -> buy(payload));
+                case "set_rent" -> write(residenceName(payload), () -> setRent(payload));
+                case "rent" -> write(residenceName(payload), () -> rent(payload));
+                case "unrent" -> write(residenceName(payload), () -> unrent(payload));
+                case "pay_rent" -> write(residenceName(payload), () -> payRent(payload));
+                case "transfer" -> write(residenceName(payload), () -> transfer(payload));
                 default -> null;
             };
         } catch (Exception e) {
@@ -88,12 +107,15 @@ public class ResidenceBridgeModule implements BridgeModule {
         String ownerFilter = str(payload, "owner").toLowerCase(Locale.ROOT);
         boolean mine = boolField(payload, "mine", false);
         UUID caller = uuidField(payload, "player_uuid");
+        boolean admin = boolField(payload, "admin", false);
 
         ResidenceManager manager = Residence.getInstance().getResidenceManager();
         List<ClaimedResidence> all = new ArrayList<>(manager.getResidences().values());
         List<JsonObject> rows = new ArrayList<>();
         for (ClaimedResidence r : all) {
             if (mine && (caller == null || !r.isOwner(caller))) continue;
+            // 可见性过滤（与游戏内一致）：服务器领地 / 非 hidden 领地 / 本人拥有 / 管理员
+            if (!mine && !canView(r, caller, admin)) continue;
             if (!ownerFilter.isEmpty()
                     && !r.getOwner().toLowerCase(Locale.ROOT).contains(ownerFilter)) continue;
             if (!query.isEmpty()) {
@@ -150,6 +172,33 @@ public class ResidenceBridgeModule implements BridgeModule {
         data.addProperty("subzone", r.isSubzone());
         if (r.isSubzone() && r.getParent() != null) {
             data.addProperty("parent", r.getParent().getName());
+        }
+        // 可见性 / 可管理性 / 服务器领地 / 隐藏状态 / 经济状态
+        UUID caller = uuidField(payload, "player_uuid");
+        boolean admin = boolField(payload, "admin", false);
+        data.addProperty("is_server_land", isServerLand(r));
+        data.addProperty("hidden", r.getPermissions().has(Flags.hidden, false));
+        data.addProperty("viewable", canView(r, caller, admin));
+        data.addProperty("can_manage", admin || (caller != null && isOwnerOrTopOwner(r, caller)));
+        data.addProperty("economy_enabled", Residence.getInstance().getConfigManager().enableEconomy());
+        data.addProperty("rent_system_enabled", Residence.getInstance().getConfigManager().enabledRentSystem());
+
+        // 传送点坐标（玩家在线时可取；离线省略，不影响只读展示）
+        Player callerPlayer = caller == null ? null : Bukkit.getPlayer(caller);
+        if (callerPlayer != null) {
+            try {
+                Location tp = r.getTeleportLocation(callerPlayer, false);
+                if (tp != null) {
+                    JsonObject t = new JsonObject();
+                    t.addProperty("world", tp.getWorld() == null ? r.getWorldName() : tp.getWorld().getName());
+                    t.addProperty("x", tp.getBlockX());
+                    t.addProperty("y", tp.getBlockY());
+                    t.addProperty("z", tp.getBlockZ());
+                    data.add("teleport", t);
+                }
+            } catch (Exception ignored) {
+                // 无传送点 / 玩家对象受限时忽略
+            }
         }
 
         // 区域边界
@@ -242,6 +291,8 @@ public class ResidenceBridgeModule implements BridgeModule {
         JsonArray arr = new JsonArray();
         for (String f : possible) arr.add(f);
         data.add("possible_flags", arr);
+        // 分类结构（参考 ResidenceList 分类，供前端分组渲染与权限编辑）
+        data.add("categories", flagCategories(r, payload));
         return result(true, "", data);
     }
 
@@ -375,6 +426,362 @@ public class ResidenceBridgeModule implements BridgeModule {
         return result(true, "", null);
     }
 
+    // ===================== 市场（只读） =====================
+
+    /** 领地市场：出售中 + 可租（未租出）领地，分页。 */
+    private JsonObject market(JsonObject payload) {
+        int page = Math.max(1, intField(payload, "page", 1));
+        int pageSize = Math.max(1, Math.min(100, intField(payload, "page_size", 20)));
+        Residence plugin = Residence.getInstance();
+        List<JsonObject> rows = new ArrayList<>();
+        // 出售中
+        Map<String, Integer> forSale = plugin.getTransactionManager().getBuyableResidences();
+        if (forSale != null) {
+            for (Map.Entry<String, Integer> e : forSale.entrySet()) {
+                ClaimedResidence r = plugin.getResidenceManager().getByName(e.getKey());
+                if (r == null) continue;
+                JsonObject o = marketRow(r, "sell");
+                o.addProperty("price", e.getValue());
+                rows.add(o);
+            }
+        }
+        // 可租（未租出）
+        for (ClaimedResidence r : plugin.getRentManager().getRentableResidences()) {
+            if (r == null || r.isRented()) continue;
+            JsonObject o = marketRow(r, "rent");
+            o.addProperty("price", plugin.getRentManager().getCostOfRent(r));
+            o.addProperty("days", plugin.getRentManager().getRentDays(r));
+            o.addProperty("renewable", plugin.getRentManager().getRentableRepeatable(r));
+            rows.add(o);
+        }
+        // 排序：先按类型（sell 在前），再按名称
+        rows.sort((a, b) -> {
+            int c = a.get("type").getAsString().compareTo(b.get("type").getAsString());
+            return c != 0 ? c : a.get("name").getAsString().compareToIgnoreCase(b.get("name").getAsString());
+        });
+        int total = rows.size();
+        int from = (page - 1) * pageSize;
+        JsonArray arr = new JsonArray();
+        if (from < total) {
+            int to = Math.min(total, from + pageSize);
+            for (int i = from; i < to; i++) arr.add(rows.get(i));
+        }
+        JsonObject data = new JsonObject();
+        data.addProperty("total", total);
+        data.addProperty("page", page);
+        data.addProperty("page_size", pageSize);
+        data.add("items", arr);
+        data.addProperty("economy_enabled", plugin.getConfigManager().enableEconomy());
+        data.addProperty("rent_system_enabled", plugin.getConfigManager().enabledRentSystem());
+        return result(true, "", data);
+    }
+
+    private JsonObject marketRow(ClaimedResidence r, String type) {
+        JsonObject o = new JsonObject();
+        o.addProperty("residence", r.getName());
+        o.addProperty("name", r.getName());
+        o.addProperty("owner", r.getOwner());
+        UUID ou = r.getOwnerUUID();
+        o.addProperty("owner_uuid", ou == null ? "" : ou.toString());
+        o.addProperty("world", r.getWorldName());
+        o.addProperty("type", type);
+        o.addProperty("size", r.getTotalSize());
+        o.addProperty("areas", r.getAreaCount());
+        return o;
+    }
+
+    /** 我租用的领地（只读）。 */
+    private JsonObject myRents(JsonObject payload) {
+        UUID uuid = uuidField(payload, "player_uuid");
+        if (uuid == null) {
+            return result(false, "缺少 player_uuid（登录令牌未携带玩家信息）", null);
+        }
+        List<ClaimedResidence> rented = Residence.getInstance().getRentManager().getRentedLands(uuid);
+        JsonArray arr = new JsonArray();
+        if (rented != null) {
+            for (ClaimedResidence r : rented) {
+                JsonObject o = new JsonObject();
+                o.addProperty("residence", r.getName());
+                o.addProperty("owner", r.getOwner());
+                o.addProperty("world", r.getWorldName());
+                o.addProperty("cost", Residence.getInstance().getRentManager().getCostOfRent(r));
+                o.addProperty("days", Residence.getInstance().getRentManager().getRentDays(r));
+                RentedLand rl = r.getRentedLand();
+                if (rl != null) {
+                    o.addProperty("renter", orEmpty(rl.getRenterName()));
+                    o.addProperty("end_time", rl.endTime);
+                    o.addProperty("auto_pay", rl.AutoPay);
+                }
+                arr.add(o);
+            }
+        }
+        JsonObject data = new JsonObject();
+        data.addProperty("total", arr.size());
+        data.add("rents", arr);
+        return result(true, "", data);
+    }
+
+    // ===================== 写：不需要玩家在线 =====================
+
+    /** 重命名领地（CommandSender 变体 + resadmin，console 安全）。 */
+    private JsonObject rename(JsonObject payload) {
+        WriteContext ctx = managed(payload);
+        if (ctx.error != null) return ctx.error;
+        String newName = str(payload, "new_name").trim();
+        if (newName.isEmpty()) {
+            return result(false, "请输入新的领地名称（new_name）", null);
+        }
+        boolean ok = Residence.getInstance().getResidenceManager()
+                .renameResidence(Bukkit.getConsoleSender(), ctx.residence.getName(), newName, true);
+        return ok ? result(true, "", null)
+                : result(false, "重命名失败（名称可能不合法、长度超限或已被占用）", null);
+    }
+
+    /** 镜像权限：把源领地的全部权限复制到目标领地（applyTemplate(null, ...) 内部强制 resadmin，console 安全）。 */
+    private JsonObject mirrorPerms(JsonObject payload) {
+        WriteContext ctx = managed(payload);
+        if (ctx.error != null) return ctx.error;
+        String sourceName = str(payload, "source").trim();
+        if (sourceName.isEmpty()) {
+            return result(false, "缺少 source（源领地名称）", null);
+        }
+        ClaimedResidence source = residence(sourceName);
+        if (source == null) {
+            return result(false, "源领地不存在: " + sourceName, null);
+        }
+        // 权限：同时是目标领地与源领地的拥有者（或父领地拥有者），或管理员
+        UUID uuid = uuidField(payload, "player_uuid");
+        boolean admin = boolField(payload, "admin", false);
+        if (!admin && uuid != null) {
+            boolean manageTarget = isOwnerOrTopOwner(ctx.residence, uuid);
+            boolean manageSource = isOwnerOrTopOwner(source, uuid);
+            if (!manageTarget || !manageSource) {
+                return result(false, "无权镜像权限（需同时拥有目标领地和源领地，或为管理员）", null);
+            }
+        }
+        ctx.residence.getPermissions().applyTemplate(null, source.getPermissions(), true);
+        return result(true, "", null);
+    }
+
+    /** 删除领地（不可逆）：仅领地主人/父领地主人或管理员，需 confirm=true 二次确认。 */
+    private JsonObject deleteRes(JsonObject payload) {
+        ClaimedResidence r = residence(str(payload, "residence"));
+        if (r == null) {
+            return result(false, "领地不存在: " + str(payload, "residence"), null);
+        }
+        boolean admin = boolField(payload, "admin", false);
+        UUID uuid = uuidField(payload, "player_uuid");
+        boolean owner = uuid != null && isOwnerOrTopOwner(r, uuid);
+        if (!admin && !owner) {
+            return result(false, "只有领地主人或管理员可以删除领地", null);
+        }
+        if (!boolField(payload, "confirm", false)) {
+            return result(false, "删除是不可逆操作，请传 confirm=true 确认删除", null);
+        }
+        String confirmName = str(payload, "confirm_name").trim();
+        if (!confirmName.isEmpty() && !confirmName.equalsIgnoreCase(r.getName())) {
+            return result(false, "确认名称与领地名称不匹配，已取消删除", null);
+        }
+        Residence.getInstance().getResidenceManager().removeResidence(Bukkit.getConsoleSender(), r, true);
+        return result(true, "", null);
+    }
+
+    /** 出售挂牌：使用无 Player 变体 putForSale(ClaimedResidence, int)，权限在模块内校验（玩家无需在线）。 */
+    private JsonObject sell(JsonObject payload) {
+        WriteContext ctx = managed(payload);
+        if (ctx.error != null) return ctx.error;
+        ClaimedResidence r = ctx.residence;
+        if (!Residence.getInstance().getConfigManager().enableEconomy()) {
+            return result(false, "服务器未启用经济系统，无法出售领地", null);
+        }
+        if (r.isForRent()) {
+            return result(false, "领地正在出租，无法同时出售（请先取消出租）", null);
+        }
+        int price = intField(payload, "price", -1);
+        if (price <= 0) {
+            return result(false, "请输入正确的出售价格（price，大于 0）", null);
+        }
+        boolean ok = Residence.getInstance().getTransactionManager().putForSale(r, price);
+        return ok ? result(true, "", null) : result(false, "挂牌失败（领地可能已在出售）", null);
+    }
+
+    /** 取消出售挂牌（无 Player 变体 + 模块内权限校验）。 */
+    private JsonObject unlistSell(JsonObject payload) {
+        WriteContext ctx = managed(payload);
+        if (ctx.error != null) return ctx.error;
+        ClaimedResidence r = ctx.residence;
+        if (!r.isForSell()) {
+            return result(false, "该领地未在出售", null);
+        }
+        Residence.getInstance().getTransactionManager().removeFromSale(r);
+        return result(true, "", null);
+    }
+
+    /** 取消出租挂牌（无 Player 变体 removeRentable + 模块内权限校验；已租出的请先退租）。 */
+    private JsonObject unlistRent(JsonObject payload) {
+        WriteContext ctx = managed(payload);
+        if (ctx.error != null) return ctx.error;
+        ClaimedResidence r = ctx.residence;
+        if (!r.isForRent()) {
+            return result(false, "该领地未在出租", null);
+        }
+        if (r.isRented()) {
+            return result(false, "该领地已被租出，请先退租（unrent）后再取消出租", null);
+        }
+        Residence.getInstance().getRentManager().removeRentable(r);
+        return result(true, "", null);
+    }
+
+    // ===================== 写：需要玩家在线 =====================
+
+    private JsonObject buy(JsonObject payload) {
+        ClaimedResidence r = residence(str(payload, "residence"));
+        if (r == null) {
+            return result(false, "领地不存在: " + str(payload, "residence"), null);
+        }
+        if (!r.isForSell()) {
+            return result(false, "该领地未在出售", null);
+        }
+        Player p = onlinePlayer(payload);
+        if (p == null) {
+            return result(false, "购买领地需要你在线（请先登录服务器后再购买）", null);
+        }
+        if (r.isOwner(p)) {
+            return result(false, "不能购买自己名下的领地", null);
+        }
+        Residence.getInstance().getTransactionManager().buyPlot(r, p, boolField(payload, "admin", false));
+        return r.isForSell() ? result(false, "购买失败（可能余额不足或已达领地数量上限）", null)
+                : result(true, "", null);
+    }
+
+    private JsonObject setRent(JsonObject payload) {
+        WriteContext ctx = managed(payload);
+        if (ctx.error != null) return ctx.error;
+        ClaimedResidence r = ctx.residence;
+        if (!Residence.getInstance().getConfigManager().enabledRentSystem()) {
+            return result(false, "服务器未启用租凭系统，无法出租领地", null);
+        }
+        if (r.isForSell()) {
+            return result(false, "领地正在出售，无法同时出租（请先取消出售）", null);
+        }
+        Player p = onlinePlayer(payload);
+        if (p == null) {
+            return result(false, "设置出租需要你在线（请先登录服务器）", null);
+        }
+        int cost = intField(payload, "cost", 100);
+        int days = intField(payload, "days", 7);
+        if (cost < 0) {
+            return result(false, "租金不能为负数", null);
+        }
+        if (days <= 0) {
+            return result(false, "租期天数必须大于 0", null);
+        }
+        boolean renewing = boolField(payload, "allow_renewing", true);
+        boolean stayInMarket = boolField(payload, "stay_in_market", true);
+        boolean autoPay = boolField(payload, "allow_auto_pay", false);
+        Residence.getInstance().getRentManager()
+                .setForRent(p, r, cost, days, renewing, stayInMarket, autoPay, boolField(payload, "admin", false));
+        return r.isForRent() ? result(true, "", null)
+                : result(false, "设置出租失败（请检查租金/租期是否合法）", null);
+    }
+
+    private JsonObject rent(JsonObject payload) {
+        ClaimedResidence r = residence(str(payload, "residence"));
+        if (r == null) {
+            return result(false, "领地不存在: " + str(payload, "residence"), null);
+        }
+        if (!r.isForRent()) {
+            return result(false, "该领地未在出租", null);
+        }
+        if (r.isRented()) {
+            return result(false, "该领地已被租出", null);
+        }
+        Player p = onlinePlayer(payload);
+        if (p == null) {
+            return result(false, "租用领地需要你在线（请先登录服务器）", null);
+        }
+        if (r.isOwner(p)) {
+            return result(false, "不能租用自己名下的领地", null);
+        }
+        boolean autoPay = boolField(payload, "auto_pay", false);
+        Residence.getInstance().getRentManager().rent(p, r, autoPay, boolField(payload, "admin", false));
+        return r.isRented() ? result(true, "", null)
+                : result(false, "租用失败（可能余额不足或已达租用上限）", null);
+    }
+
+    /** 退租 / 强制退租：领地主人、租客本人或管理员可执行。 */
+    private JsonObject unrent(JsonObject payload) {
+        ClaimedResidence r = residence(str(payload, "residence"));
+        if (r == null) {
+            return result(false, "领地不存在: " + str(payload, "residence"), null);
+        }
+        if (!r.isRented()) {
+            return result(false, "该领地未被租出", null);
+        }
+        Player p = onlinePlayer(payload);
+        if (p == null) {
+            return result(false, "该操作需要你在线（请先登录服务器）", null);
+        }
+        boolean admin = boolField(payload, "admin", false);
+        RentedLand rented = r.getRentedLand();
+        String renter = rented == null ? "" : orEmpty(rented.getRenterName());
+        boolean isRenter = !renter.isEmpty() && p.getName().equalsIgnoreCase(renter);
+        boolean isOwner = r.isOwner(p);
+        if (!admin && !isOwner && !isRenter) {
+            return result(false, "只有领地主人、租客本人或管理员可以退租", null);
+        }
+        Residence.getInstance().getRentManager().unrent(p, r, admin);
+        return result(true, "", null);
+    }
+
+    /** 支付租金：租客本人或管理员可执行（续租）。 */
+    private JsonObject payRent(JsonObject payload) {
+        ClaimedResidence r = residence(str(payload, "residence"));
+        if (r == null) {
+            return result(false, "领地不存在: " + str(payload, "residence"), null);
+        }
+        if (!r.isRented()) {
+            return result(false, "该领地未被租出", null);
+        }
+        Player p = onlinePlayer(payload);
+        if (p == null) {
+            return result(false, "支付租金需要你在线（请先登录服务器）", null);
+        }
+        boolean admin = boolField(payload, "admin", false);
+        RentedLand rented = r.getRentedLand();
+        String renter = rented == null ? "" : orEmpty(rented.getRenterName());
+        boolean isRenter = !renter.isEmpty() && p.getName().equalsIgnoreCase(renter);
+        if (!admin && !isRenter) {
+            return result(false, "只有租客本人或管理员可以支付租金", null);
+        }
+        Residence.getInstance().getRentManager().payRent(p, r, admin);
+        return result(true, "", null);
+    }
+
+    /** 转让领地：Residence 本体要求「发起者在线 + 接收者在线」，游戏内同样如此。 */
+    private JsonObject transfer(JsonObject payload) {
+        WriteContext ctx = managed(payload);
+        if (ctx.error != null) return ctx.error;
+        ClaimedResidence r = ctx.residence;
+        String targetName = playerString(payload);
+        if (targetName.isEmpty()) {
+            return result(false, "缺少 target（目标玩家名）", null);
+        }
+        Player requester = onlinePlayer(payload);
+        if (requester == null) {
+            return result(false, "转让需要你先登录服务器（转让发起者必须在线）", null);
+        }
+        Player target = Bukkit.getPlayerExact(targetName);
+        if (target == null || !target.isOnline()) {
+            return result(false, "目标玩家不在线（Residence 转让要求接收者在线，请让 TA 先登录服务器）", null);
+        }
+        boolean includeSubzones = boolField(payload, "include_subzones", true);
+        Residence.getInstance().getResidenceManager()
+                .giveResidence(requester, targetName, r, boolField(payload, "admin", false), includeSubzones);
+        return target.getUniqueId().equals(r.getOwnerUUID()) ? result(true, "", null)
+                : result(false, "转让失败（接收者可能已达领地数量上限或面积限制）", null);
+    }
+
     // ===================== 权限校验 =====================
 
     /** 写操作前置校验：领地存在 + 调用者是领地主人（或父领地主人/管理员）。 */
@@ -419,14 +826,40 @@ public class ResidenceBridgeModule implements BridgeModule {
     private boolean canManage(ClaimedResidence r, JsonObject payload) {
         if (boolField(payload, "admin", false)) return true;
         UUID uuid = uuidField(payload, "player_uuid");
-        if (uuid != null) {
-            if (r.isOwner(uuid)) return true;
-            ClaimedResidence top = r.getTopParent();
-            if (top != null && top != r && top.isOwner(uuid)) return true;
-        }
+        if (uuid != null && isOwnerOrTopOwner(r, uuid)) return true;
         // 注意：HTTP 路由中的 player 参数是“目标玩家”而非调用者，
         // 调用者身份一律以 token 注入的 player_uuid 为准（admin=true 仅限服务端内部/管理通道）。
         return false;
+    }
+
+    /** 玩家是否为领地主人（或父领地主人）。 */
+    private boolean isOwnerOrTopOwner(ClaimedResidence r, UUID uuid) {
+        if (r.isOwner(uuid)) return true;
+        ClaimedResidence top = r.getTopParent();
+        return top != null && top != r && top.isOwner(uuid);
+    }
+
+    /** 可见性（与游戏内 list 一致）：管理员 / 服务器领地 / 非 hidden 领地 / 本人拥有。 */
+    private boolean canView(ClaimedResidence r, UUID uuid, boolean admin) {
+        if (admin) return true;
+        if (isServerLand(r)) return true;
+        boolean hidden = r.getPermissions().has(Flags.hidden, false);
+        if (!hidden) return true;
+        return uuid != null && r.isOwner(uuid);
+    }
+
+    /** 服务器领地：ownerUUID 为空、占位 UUID 或等于服务器 UUID。 */
+    private boolean isServerLand(ClaimedResidence r) {
+        UUID ou = r.getOwnerUUID();
+        if (ou == null) return true;
+        UUID serverUuid = Residence.getInstance().getServerUUID();
+        return serverUuid != null && serverUuid.equals(ou);
+    }
+
+    /** 在线玩家：Residence 交易/出租/转让 API 只接受 Player 对象，离线时返回 null 由调用方给出明确提示。 */
+    private Player onlinePlayer(JsonObject payload) {
+        UUID uuid = uuidField(payload, "player_uuid");
+        return uuid == null ? null : Bukkit.getPlayer(uuid);
     }
 
     // ===================== 并发与调度 =====================
@@ -559,5 +992,93 @@ public class ResidenceBridgeModule implements BridgeModule {
         out.addProperty("message", message == null ? "" : message);
         out.add("data", data == null ? new JsonObject() : data);
         return out;
+    }
+
+    // ===================== Flag 分类（参考 ResidenceList 分组） =====================
+
+    private JsonArray flagCategories(ClaimedResidence r, JsonObject payload) {
+        JsonArray cats = new JsonArray();
+        boolean admin = boolField(payload, "admin", false);
+        UUID caller = uuidField(payload, "player_uuid");
+        boolean manager = admin || (caller != null && isOwnerOrTopOwner(r, caller));
+        ResidencePermissions perms = r.getPermissions();
+        for (FlagCategory cat : FlagCategory.values()) {
+            JsonObject co = new JsonObject();
+            co.addProperty("key", cat.key);
+            co.addProperty("name", cat.displayName);
+            JsonArray flagsArr = new JsonArray();
+            for (String name : cat.flags) {
+                Flags f = Flags.getFlag(name);
+                if (f == null) continue;
+                JsonObject fo = new JsonObject();
+                fo.addProperty("flag", f.name());
+                fo.addProperty("name", f.getName());
+                fo.addProperty("desc", f.getDesc());
+                fo.addProperty("default", f.isEnabled());
+                fo.addProperty("mode", f.getFlagMode().name());
+                Boolean v = perms.getFlags().get(f.name());
+                if (v == null) {
+                    fo.addProperty("value", (String) null);
+                } else {
+                    fo.addProperty("value", v);
+                }
+                // 与游戏内一致：全局 flag 仅 Residence/Both 模式可用；玩家 flag 仅 Player/Both 模式可用
+                boolean validGlobal = manager && perms.checkValidFlag(f.name(), true)
+                        && f.getFlagMode() != Flags.FlagMode.Player;
+                boolean validPlayer = manager && perms.checkValidFlag(f.name(), false)
+                        && f.getFlagMode() != Flags.FlagMode.Residence;
+                fo.addProperty("global_editable", validGlobal);
+                fo.addProperty("player_editable", validPlayer);
+                flagsArr.add(fo);
+            }
+            if (flagsArr.size() > 0) {
+                co.add("flags", flagsArr);
+                cats.add(co);
+            }
+        }
+        return cats;
+    }
+
+    /** Residence flag 分类（与 ResidenceList 的 ResidenceFlagCategory 一致，仅字符串引用、不依赖 ResidenceList）。 */
+    private enum FlagCategory {
+        BUILD_DESTROY("build_destroy", "建造与破坏",
+                "build", "place", "destroy", "container"),
+        INTERACT_USE("interact_use", "交互与使用",
+                "use", "door", "button", "lever", "pressure", "diode", "note", "table", "enchant",
+                "brew", "anvil", "beacon", "bed", "cake", "flowerpot", "egg", "honey", "honeycomb",
+                "copper", "brush", "goathorn", "anchor", "commandblock", "command"),
+        ITEMS_DROPS("items_drops", "物品与掉落",
+                "itemdrop", "itempickup", "nodurability"),
+        MOVEMENT_TELEPORT("movement_teleport", "移动与传送",
+                "move", "tp", "enderpearl", "chorustp", "fly", "nofly", "elytra",
+                "wspeed1", "wspeed2", "jump2", "jump3"),
+        ENTITIES_MOBS("entities_mobs", "生物与实体",
+                "mobkilling", "animalkilling", "vehicledestroy", "vehicleplacing", "riding", "leash",
+                "shear", "dye", "animalfeeding", "nametag", "harvest", "trade", "hook",
+                "animals", "monsters", "nomobs", "canimals", "cmonsters", "nanimals", "nmonsters",
+                "sanimals", "smonsters", "creeper", "dragongrief", "witherspawn", "phantomspawn",
+                "witherdamage", "witherdestruction", "mobexpdrop", "mobitemdrop", "boarding", "raid"),
+        ENVIRONMENT_PHYSICS("environment_physics", "环境与物理",
+                "ignite", "flow", "waterflow", "lavaflow", "explode", "tnt", "piston",
+                "pistonprotection", "decay", "grow", "spread", "skulk", "iceform", "icemelt",
+                "dryup", "coraldryup", "copperoxidation", "fallinprotection", "flowinprotection",
+                "snowtrail", "trample", "golemopenchest", "burn", "fireball", "firespread", "anvilbreak"),
+        COMBAT_PROTECTION("combat_protection", "战斗与保护",
+                "friendlyfire", "pvp", "damage", "falldamage", "safezone", "shoot", "snowball",
+                "hotfloor", "keepinv", "keepexp", "respawn", "healing", "feed"),
+        VISUAL_EFFECTS("visual_effects", "视觉效果",
+                "day", "night", "rain", "sun", "glow", "title", "visualizer", "coords", "hidden"),
+        ECONOMY_RESIDENCE("economy_residence", "经济与领地",
+                "admin", "bank", "subzone", "chat", "shop", "backup", "craft");
+
+        final String key;
+        final String displayName;
+        final List<String> flags;
+
+        FlagCategory(String key, String displayName, String... flags) {
+            this.key = key;
+            this.displayName = displayName;
+            this.flags = Arrays.asList(flags);
+        }
     }
 }
