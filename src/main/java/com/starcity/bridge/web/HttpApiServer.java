@@ -85,7 +85,9 @@ public final class HttpApiServer {
         portal( "GET",  "/api/team",                          "team", "list");
         portal( "GET",  "/api/team/me",                       "team", "my_team");
         portal( "GET",  "/api/team/search",                   "team", "search");
+        portal( "GET",  "/api/team/online-teammates",         "team", "online_teammates");
         portal( "GET",  "/api/team/:tid",                     "team", "detail");
+        portal( "GET",  "/api/team/:tid/message_state",       "team", "message_state");
         portal( "GET",  "/api/team/:tid/members",             "team", "members");
         portal( "GET",  "/api/team/:tid/applications",        "team", "applications");
         portal( "GET",  "/api/team/:tid/funds",               "team", "funds");
@@ -107,6 +109,8 @@ public final class HttpApiServer {
         portal( "POST", "/api/team/:tid/funds/deposit",       "team", "deposit_funds");
         portal( "POST", "/api/team/:tid/funds/withdraw",      "team", "withdraw_funds");
         portal( "POST", "/api/team/:tid/message",             "team", "post_message");
+        portal( "POST", "/api/team/:tid/message/read",        "team", "mark_messages_read");
+        portal( "POST", "/api/team/:tid/notice/read",         "team", "mark_notice_read");
         portal( "GET",  "/api/residences",                      "residence", "list");
         portal( "GET",  "/api/residences/:residence",           "residence", "detail");
         portal( "GET",  "/api/residences/:residence/flags",     "residence", "flags");
@@ -204,7 +208,7 @@ public final class HttpApiServer {
         boolean ok = resp.has("ok") && resp.get("ok").getAsBoolean();
         JsonElement data = resp.get("data");
         String message = resp.has("message") ? resp.get("message").getAsString() : "";
-        send(ex, ok ? 200 : 400, data == null || data.isJsonNull() ? null : data.getAsJsonObject(), message);
+        send(ex, ok ? 200 : 400, data == null || data.isJsonNull() ? null : data, message);
     }
 
     private void login(HttpExchange ex, JsonObject body) throws IOException {
@@ -398,11 +402,11 @@ public final class HttpApiServer {
         ex.getResponseHeaders().set("Access-Control-Max-Age", "86000");
     }
 
-    private void sendOk(HttpExchange ex, JsonObject data) throws IOException {
+    private void sendOk(HttpExchange ex, JsonElement data) throws IOException {
         send(ex, 200, data, "success");
     }
 
-    private void send(HttpExchange ex, int status, JsonObject data, String message) throws IOException {
+    private void send(HttpExchange ex, int status, JsonElement data, String message) throws IOException {
         JsonObject out = new JsonObject();
         out.addProperty("code", status == 200 ? 0 : status);
         out.addProperty("message", message == null ? "" : message);

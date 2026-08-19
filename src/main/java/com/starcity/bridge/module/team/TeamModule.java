@@ -8,6 +8,7 @@ import com.starcity.bridge.module.BridgeModule;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -44,48 +45,52 @@ public class TeamModule implements BridgeModule {
             return result(false, "MGTeam 插件未加载或未启用", null);
         }
         try {
-            Map<String, Object> r = switch (action) {
+            // 所有只读接口都带调用者身份（player_uuid）与 admin 标志，
+            // 权限校验统一放在 MGTeam-JE 的 WebTeamManager 内（与游戏内一致）。
+            String tid = str(payload, "tid");
+            String uuid = str(payload, "player_uuid");
+            boolean admin = bool(payload, "admin", false);
+            JsonObject r = switch (action) {
                 // 只读
-                case "list" -> w.teamList(intField(payload, "page", 1), intField(payload, "page_size", 20), str(payload, "query"));
-                case "all" -> w.allTeams(bool(payload, "admin", false), intField(payload, "page", 1), intField(payload, "page_size", 20));
-                case "detail" -> w.teamDetail(str(payload, "tid"));
-                case "members" -> w.teamMembers(str(payload, "tid"));
-                case "applications" -> w.teamApplications(str(payload, "tid"), str(payload, "player_uuid"), bool(payload, "admin", false));
-                case "funds" -> w.teamFunds(str(payload, "tid"));
-                case "logs" -> w.fundLogs(str(payload, "tid"), intField(payload, "page", 1), intField(payload, "page_size", 50));
-                case "messages" -> w.teamMessages(str(payload, "tid"), intField(payload, "page", 1), intField(payload, "page_size", 50));
-                case "message_state" -> w.messageState(str(payload, "tid"), str(payload, "player_uuid"));
-                case "my_team" -> w.myTeam(str(payload, "player_uuid"));
-                case "online_teammates" -> w.onlineTeammates(str(payload, "player_uuid"));
-                case "search" -> w.teamSearch(str(payload, "query"));
+                case "list" -> toJson(w.teamList(intField(payload, "page", 1), intField(payload, "page_size", 20), str(payload, "query")));
+                case "all" -> toJson(w.allTeams(admin, intField(payload, "page", 1), intField(payload, "page_size", 20)));
+                case "detail" -> toJson(w.teamDetail(tid, uuid, admin));
+                case "members" -> listToJson(w.teamMembers(tid, uuid, admin));
+                case "applications" -> listToJson(w.teamApplications(tid, uuid, admin));
+                case "funds" -> toJson(w.teamFunds(tid, uuid, admin));
+                case "logs" -> toJson(w.fundLogs(tid, uuid, admin, intField(payload, "page", 1), intField(payload, "page_size", 50)));
+                case "messages" -> toJson(w.teamMessages(tid, uuid, admin, intField(payload, "page", 1), intField(payload, "page_size", 50)));
+                case "message_state" -> toJson(w.messageState(tid, uuid, admin));
+                case "my_team" -> toJson(w.myTeam(uuid));
+                case "online_teammates" -> toJson(w.onlineTeammates(uuid));
+                case "search" -> toJson(w.teamSearch(str(payload, "query")));
                 // 写：团队生命周期
-                case "create" -> w.createTeam(str(payload, "player_uuid"), str(payload, "name"));
-                case "join" -> w.applyJoin(str(payload, "player_uuid"), str(payload, "tid"));
-                case "accept_application" -> w.acceptApplication(str(payload, "tid"), str(payload, "player_uuid"), str(payload, "applicant_uuid"), bool(payload, "admin", false));
-                case "reject_application" -> w.rejectApplication(str(payload, "tid"), str(payload, "player_uuid"), str(payload, "applicant_uuid"), bool(payload, "admin", false));
-                case "promote" -> w.promoteMember(str(payload, "tid"), str(payload, "player_uuid"), str(payload, "target_uuid"), bool(payload, "admin", false));
-                case "demote" -> w.demoteOperator(str(payload, "tid"), str(payload, "player_uuid"), str(payload, "target_uuid"), bool(payload, "admin", false));
-                case "remove_member" -> w.removeMember(str(payload, "tid"), str(payload, "player_uuid"), str(payload, "target_uuid"), bool(payload, "admin", false));
-                case "quit" -> w.quitTeam(str(payload, "player_uuid"));
-                case "rename" -> w.renameTeam(str(payload, "tid"), str(payload, "player_uuid"), str(payload, "name"), bool(payload, "admin", false));
-                case "set_notice" -> w.setNotice(str(payload, "tid"), str(payload, "player_uuid"), str(payload, "notice"), bool(payload, "admin", false));
-                case "set_public" -> w.setPublic(str(payload, "tid"), str(payload, "player_uuid"), bool(payload, "public", false), bool(payload, "admin", false));
-                case "set_friendly_fire" -> w.setFriendlyFire(str(payload, "tid"), str(payload, "player_uuid"), bool(payload, "allow", false), bool(payload, "admin", false));
-                case "disband" -> w.disbandTeam(str(payload, "tid"), str(payload, "player_uuid"), str(payload, "confirm_name"), bool(payload, "admin", false));
+                case "create" -> toJson(w.createTeam(uuid, str(payload, "name")));
+                case "join" -> toJson(w.applyJoin(uuid, tid));
+                case "accept_application" -> toJson(w.acceptApplication(tid, uuid, str(payload, "applicant_uuid"), admin));
+                case "reject_application" -> toJson(w.rejectApplication(tid, uuid, str(payload, "applicant_uuid"), admin));
+                case "promote" -> toJson(w.promoteMember(tid, uuid, str(payload, "target_uuid"), admin));
+                case "demote" -> toJson(w.demoteOperator(tid, uuid, str(payload, "target_uuid"), admin));
+                case "remove_member" -> toJson(w.removeMember(tid, uuid, str(payload, "target_uuid"), admin));
+                case "quit" -> toJson(w.quitTeam(uuid));
+                case "rename" -> toJson(w.renameTeam(tid, uuid, str(payload, "name"), admin));
+                case "set_notice" -> toJson(w.setNotice(tid, uuid, str(payload, "notice"), admin));
+                case "set_public" -> toJson(w.setPublic(tid, uuid, bool(payload, "public", false), admin));
+                case "set_friendly_fire" -> toJson(w.setFriendlyFire(tid, uuid, bool(payload, "allow", false), admin));
+                case "disband" -> toJson(w.disbandTeam(tid, uuid, str(payload, "confirm_name"), admin));
                 // 写：资金与留言
-                case "deposit_funds" -> w.depositFunds(str(payload, "tid"), str(payload, "player_uuid"), longField(payload, "amount", 0));
-                case "withdraw_funds" -> w.withdrawFunds(str(payload, "tid"), str(payload, "player_uuid"), longField(payload, "amount", 0), bool(payload, "admin", false));
-                case "post_message" -> w.postMessage(str(payload, "tid"), str(payload, "player_uuid"), str(payload, "content"));
-                case "mark_messages_read" -> w.markMessagesRead(str(payload, "tid"), str(payload, "player_uuid"));
-                case "mark_notice_read" -> w.markNoticeRead(str(payload, "tid"), str(payload, "player_uuid"));
+                case "deposit_funds" -> toJson(w.depositFunds(tid, uuid, longField(payload, "amount", 0)));
+                case "withdraw_funds" -> toJson(w.withdrawFunds(tid, uuid, longField(payload, "amount", 0), admin));
+                case "post_message" -> toJson(w.postMessage(tid, uuid, str(payload, "content")));
+                case "mark_messages_read" -> toJson(w.markMessagesRead(tid, uuid));
+                case "mark_notice_read" -> toJson(w.markNoticeRead(tid, uuid));
                 // 管理
-                case "admin_sync_names" -> w.adminSyncNames(bool(payload, "admin", false));
-                case "admin_reload" -> w.adminReloadConfig(bool(payload, "admin", false));
-                case "admin_disband" -> w.adminDisband(bool(payload, "admin", false), str(payload, "tid"), str(payload, "confirm_name"));
+                case "admin_sync_names" -> toJson(w.adminSyncNames(admin));
+                case "admin_reload" -> toJson(w.adminReloadConfig(admin));
+                case "admin_disband" -> toJson(w.adminDisband(admin, tid, str(payload, "confirm_name")));
                 default -> null;
             };
-            if (r == null) return null;
-            return toJson(r);
+            return r;
         } catch (Exception e) {
             plugin.getLogger().warning("[team] 执行失败: " + action + " -> " + e.getMessage());
             return result(false, "团队操作失败: " + e.getMessage(), null);
@@ -93,6 +98,12 @@ public class TeamModule implements BridgeModule {
     }
 
     // ===================== 转换工具 =====================
+
+    /** 列表型接口（团队成员/申请）：null 表示权限不足或团队不存在。 */
+    private JsonObject listToJson(List<Map<String, Object>> list) {
+        if (list == null) return result(false, "权限不足或团队不存在", null);
+        return result(true, "", plugin.gson().toJsonTree(list));
+    }
 
     private JsonObject toJson(Map<String, Object> r) {
         boolean ok = Boolean.TRUE.equals(r.get("ok"));

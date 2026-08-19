@@ -54,17 +54,26 @@ Header `Authorization: Bearer <token>`，返回当前玩家信息。
 
 ## 团队（module=team，传送相关已去除）
 
+> 权限说明（与游戏内一致，校验在 MGTeam-JE 插件内完成，调用方自动携带登录玩家 `player_uuid`）：
+> - 团队详情 / 成员 / 资金 / 留言：仅**本团队成员**可见；
+> - 申请列表 / 资金流水 / 管理操作：仅**团队管理员(operator)**可看/可做；
+> - 排行榜 / 搜索：仅公开团队（私密团队只能按 ID 精确搜索到，详情仍不可见）；
+> - 写操作要求玩家在线时返回“该操作需要玩家在线”；只读与“标记已读”允许离线。
+> - 未登录/无权限访问：返回 `code!=0` 与中文原因（如“您不在此团队中”“需要管理员权限”）。
+
 | 方法 | 路径 | 说明 |
 |---|---|---|
-| GET | /api/team?page=&page_size=&query= | 公开团队列表 |
-| GET | /api/team/me | 我的团队 |
-| GET | /api/team/search?query= | 团队搜索 |
-| GET | /api/team/:tid | 团队详情 |
-| GET | /api/team/:tid/members | 成员列表 |
-| GET | /api/team/:tid/applications | 待处理申请 |
-| GET | /api/team/:tid/funds | 团队资金 |
-| GET | /api/team/:tid/logs?page=&page_size= | 资金流水 |
-| GET | /api/team/:tid/messages?page=&page_size= | 团队留言 |
+| GET | /api/team?page=&page_size=&query= | 公开团队排行榜（分页） |
+| GET | /api/team/me | 我的团队（**扁平对象**：`{in_team:false}` 或 `{in_team:true, tid, name, my_role, ...}`） |
+| GET | /api/team/search?query= | 团队搜索（名称/ID 包含匹配） |
+| GET | /api/team/online-teammates | 在线队友（信息性，无传送） |
+| GET | /api/team/:tid | 团队详情（含 members 数组；仅成员） |
+| GET | /api/team/:tid/members | 成员列表（**data 为数组**；仅成员） |
+| GET | /api/team/:tid/applications | 待处理申请（**data 为数组**；仅 operator） |
+| GET | /api/team/:tid/funds | 团队资金（仅成员） |
+| GET | /api/team/:tid/logs?page=&page_size= | 资金流水（仅 operator） |
+| GET | /api/team/:tid/messages?page=&page_size= | 团队留言（仅成员） |
+| GET | /api/team/:tid/message_state | 留言/公告未读状态（仅成员） |
 | POST | /api/team/create | `{name}` |
 | POST | /api/team/:tid/join | 申请入队 |
 | POST | /api/team/:tid/application/accept | `{applicant_uuid}` |
@@ -77,10 +86,23 @@ Header `Authorization: Bearer <token>`，返回当前玩家信息。
 | POST | /api/team/:tid/notice | `{notice}` |
 | POST | /api/team/:tid/public | `{public:bool}` |
 | POST | /api/team/:tid/friendly-fire | `{allow:bool}` |
-| POST | /api/team/:tid/disband | `{confirm_name}` |
+| POST | /api/team/:tid/disband | `{confirm_name}`（需与团队名一致） |
 | POST | /api/team/:tid/funds/deposit | `{amount}` |
-| POST | /api/team/:tid/funds/withdraw | `{amount, admin?:bool}` |
-| POST | /api/team/:tid/message | `{content}` |
+| POST | /api/team/:tid/funds/withdraw | `{amount}` |
+| POST | /api/team/:tid/message | `{content}`（≤100字，有冷却） |
+| POST | /api/team/:tid/message/read | 标记留言已读（允许离线） |
+| POST | /api/team/:tid/notice/read | 标记公告已读（允许离线） |
+
+团队对象字段（`teamView`，列表/详情/我的团队均含）：`tid`(=`team_id`)、`name`、`funds`、
+`activity`、`created_at`、`public`、`friendly_fire`(=`allow_friendly_fire`)、`owner`(=队长名)、
+`owner_uuid`、`notice`、`notice_updated_at`、`member_count`、`operator_count`、`message_count`、
+`application_count`、`currency_name`。
+成员：`uuid`、`name`、`role`(`OPERATOR`/`MEMBER`)、`operator`(bool)、`online`、`joined_at`(恒为 null 占位)。
+申请：`applicant_uuid`(=`uuid`)、`applicant`(=`name`)、`applied_at`。
+留言：`sender`(=`sender_name`)、`sender_uuid`、`content`、`time`、`timestamp`。
+流水：`type`(存入/取出)、`amount`(=`|change|`)、`note`(=`reason`)、`change`、`balance_before`、`balance_after`、`time`、`timestamp`。
+
+> 网页设计详细稿件见 `docs/team-web-design.md`。
 
 
 ## 领地（module=residence，对接 Zrips/Residence 本体公开接口）
